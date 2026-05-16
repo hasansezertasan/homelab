@@ -22,7 +22,11 @@ directly, peer-to-peer. No port forwarding, no hbbs/hbbr servers, no keys.
    - System Settings → Privacy & Security → **Screen Recording** → enable RustDesk
    - **Accessibility** → enable RustDesk
    - **Input Monitoring** → enable RustDesk
-4. (Optional) Settings → **General** → ☑ "Start on boot" so it survives reboots.
+4. `bootstrap.sh` already registers RustDesk as a macOS **Login Item** so it
+   relaunches after every reboot. Verify under **System Settings → General →
+   Login Items**. Remove it there if you don't want auto-start. The app's own
+   Settings → General → ☑ "Start on boot" is an alternative — pick one, not
+   both.
 
 ## From your phone / laptop (the client side)
 

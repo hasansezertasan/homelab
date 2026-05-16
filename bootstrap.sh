@@ -32,6 +32,23 @@ install_cask() {
   fi
 }
 
+# add_login_item APP_PATH
+# Idempotent macOS Login Item registration via System Events. Visible under
+# System Settings → General → Login Items, removable there.
+add_login_item() {
+  local app_path="$1" app_name
+  app_name="$(basename "$app_path" .app)"
+  [[ -d "$app_path" ]] || { warn "${app_name}: app not found at $app_path, skipping login item"; return 0; }
+  if osascript -e "tell application \"System Events\" to get the name of every login item" 2>/dev/null \
+       | tr ',' '\n' | sed 's/^ *//' | grep -qx "$app_name"; then
+    skip "${app_name} already a login item"
+  else
+    osascript -e "tell application \"System Events\" to make login item at end with properties {path:\"$app_path\", hidden:false}" >/dev/null \
+      && ok "${app_name} added to Login Items" \
+      || warn "${app_name}: could not add login item (grant Automation permission to Terminal?)"
+  fi
+}
+
 # ---------- sanity checks ----------
 [[ "$(uname -s)" == "Darwin" ]]   || fail "This script is macOS-only."
 [[ "$(uname -m)" == "arm64" ]]    || fail "Apple Silicon required (script pins /opt/homebrew)."
@@ -97,10 +114,12 @@ else
   tailscale_cask="tailscale"
 fi
 install_cask "Tailscale" "$tailscale_cask" "open Tailscale.app and sign in before the next reboot"
+add_login_item "/Applications/Tailscale.app"
 
 # ---------- 3. RustDesk (remote desktop over the tailnet) ----------
 step "RustDesk"
 install_cask "RustDesk" "rustdesk" "see docs/RUSTDESK.md for the Direct-IP-access config"
+add_login_item "/Applications/RustDesk.app"
 
 # ---------- 4. OpenCode (headless AI coding agent) ----------
 step "OpenCode"
