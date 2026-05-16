@@ -43,12 +43,14 @@ Then:
 ## What it does
 
 - Installs Homebrew (Apple Silicon, `/opt/homebrew`).
-- `brew install`: `git`, `gh`, `mise`, `uv`, `node`, `bun`, `jq`, `ripgrep`, `fd`, `bat`.
-- `brew install --cask`: Tailscale, RustDesk, OrbStack.
+- `brew bundle` against `./Brewfile` — formulae (`git`, `gh`, `mise`, `uv`,
+  `node`, `bun`, `jq`, `ripgrep`, `fd`, `bat`, `opencode`, `hermes-agent`) +
+  casks (`tailscale-app`, `rustdesk`, `orbstack`). See `Brewfile` for the
+  canonical list.
 - Registers Tailscale and RustDesk as macOS **Login Items** so the GUI apps
   relaunch on every reboot (visible/removable under System Settings → General
   → Login Items).
-- `curl | bash` (official installers): OpenCode, OpenChamber, Hermes.
+- `curl | bash` (official installer): OpenChamber.
 - Drops two launchd plists in `~/Library/LaunchAgents/` so OpenCode and
   OpenChamber auto-start on boot. (Hermes gateway plist ships in the repo
   but is opt-in — uncomment one line in `bootstrap.sh` to enable.)
