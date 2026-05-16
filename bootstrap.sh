@@ -128,7 +128,8 @@ step "Hermes Agent"
 if command -v hermes &>/dev/null; then
   ok "already installed"
 else
-  curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+  # --skip-setup keeps bootstrap non-interactive; user runs `hermes setup` manually.
+  curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash -s -- --skip-setup
   warn "run \`hermes setup\` after this script finishes to pick a model + gateway"
 fi
 
