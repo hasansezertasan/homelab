@@ -72,9 +72,10 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 
 # ---------- 2. Brewfile (CLI tools, agents, GUI apps) ----------
 # Single source of truth for brew packages. `brew bundle` is idempotent —
-# installs whatever's missing, skips what's present.
+# installs whatever's missing, skips what's present, and won't upgrade
+# already-installed packages.
 step "Brewfile"
-brew bundle --file="${SCRIPT_DIR}/Brewfile"
+brew bundle --no-upgrade --file="${SCRIPT_DIR}/Brewfile"
 
 # ---------- 3. GUI Login Items (auto-relaunch on reboot) ----------
 # Casks installed via Brewfile in §1b. Here we register the Login Items so
