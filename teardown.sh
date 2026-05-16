@@ -37,8 +37,8 @@ echo "==> Removing OpenChamber / OpenCode / Hermes binaries"
 brew uninstall openchamber 2>/dev/null || true
 # Only the installed binary is removed; ~/.opencode/auth.json + other state
 # files remain. Delete ~/.opencode manually for a full wipe.
-rm -rf "$HOME/.opencode/bin"
-rm -f  "$HOME/.local/bin/hermes"
+brew uninstall opencode 2>/dev/null || true
+brew uninstall hermes-agent 2>/dev/null || true
 
 echo
 echo "Done. Data dirs left intact:"

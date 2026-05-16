@@ -10,7 +10,7 @@
        OpenChamber connects to it; nothing else needs direct access. -->
   <key>ProgramArguments</key>
   <array>
-    <string>__HOME__/.opencode/bin/opencode</string>
+    <string>/opt/homebrew/bin/opencode</string>
     <string>serve</string>
     <string>--port</string>
     <string>4096</string>
@@ -23,7 +23,7 @@
     <key>HOME</key>
     <string>__HOME__</string>
     <key>PATH</key>
-    <string>__HOME__/.opencode/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
   </dict>
 
   <key>RunAtLoad</key>          <true/>

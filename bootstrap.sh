@@ -2,8 +2,8 @@
 # =====================================================================
 # MacBook M1 Home Lab Bootstrap
 # ---------------------------------------------------------------------
-# Installs: Homebrew + CLI tools (git, gh, mise, uv, bun, jq, ripgrep, fd, bat),
-#           OrbStack, Tailscale, RustDesk, OpenCode, OpenChamber, Hermes
+# Installs: Homebrew + everything in ./Brewfile (CLI tools, agents,
+#           Tailscale, RustDesk, OrbStack) + OpenChamber.
 # Target  : Apple Silicon (M1/M2/M3/M4), clean macOS install
 # Idempotent: re-running skips anything already installed.
 # =====================================================================
@@ -19,18 +19,6 @@ ok()    { printf "    ${GRN}✓${RST} %s\n" "$*"; }
 skip()  { printf "    ${DIM}·${RST} ${DIM}%s${RST}\n" "$*"; }
 warn()  { printf "    ${YEL}!${RST} %s\n" "$*"; }
 fail()  { printf "    ${RED}✗${RST} %s\n" "$*" >&2; exit 1; }
-
-# install_cask APP_NAME CASK [POST_INSTALL_NOTE]
-# Idempotent cask install — guards on /Applications/${APP_NAME}.app presence.
-install_cask() {
-  local app="$1" cask="$2" note="${3:-}"
-  if [[ -d "/Applications/${app}.app" ]]; then
-    ok "${app} already installed"
-  else
-    brew install --cask "$cask"
-    ok "${app} installed${note:+ — $note}"
-  fi
-}
 
 # add_login_item APP_PATH
 # Idempotent macOS Login Item registration via System Events. Visible under
@@ -82,59 +70,22 @@ fi
 [[ -x /opt/homebrew/bin/brew ]] || fail "/opt/homebrew/bin/brew missing — Apple Silicon required."
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
-# ---------- 1b. CLI tools (agent staples + runtimes) ----------
-step "CLI tools"
-BREW_FORMULAE=(git gh mise uv node jq ripgrep fd bat)
-for pkg in "${BREW_FORMULAE[@]}"; do
-  if brew list --formula "$pkg" &>/dev/null; then
-    skip "$pkg already installed"
-  else
-    brew install "$pkg"
-    ok "$pkg installed"
-  fi
-done
+# ---------- 2. Brewfile (CLI tools, agents, GUI apps) ----------
+# Single source of truth for brew packages. `brew bundle` is idempotent —
+# installs whatever's missing, skips what's present, and won't upgrade
+# already-installed packages.
+step "Brewfile"
+brew bundle --no-upgrade --file="${SCRIPT_DIR}/Brewfile"
 
-if command -v bun &>/dev/null; then
-  skip "bun already installed"
-else
-  brew install oven-sh/bun/bun
-  ok "bun installed"
-fi
-
-# ---------- 1c. OrbStack (Docker runtime — lighter than Docker Desktop) ----------
-step "OrbStack"
-install_cask "OrbStack" "orbstack" "launch OrbStack.app once to start the Docker engine"
-
-# ---------- 2. Tailscale (mesh VPN — must be first) ----------
-step "Tailscale"
-# tailscale-app is the new cask name; older Homebrew uses `tailscale`.
-if brew info --cask tailscale-app &>/dev/null; then
-  tailscale_cask="tailscale-app"
-else
-  tailscale_cask="tailscale"
-fi
-install_cask "Tailscale" "$tailscale_cask" "open Tailscale.app and sign in before the next reboot"
+# ---------- 3. GUI Login Items (auto-relaunch on reboot) ----------
+# Casks installed via Brewfile in §1b. Here we register the Login Items so
+# the GUI apps relaunch on every reboot. Visible/removable under System
+# Settings → General → Login Items.
+step "Login Items"
 add_login_item "/Applications/Tailscale.app"
-
-# ---------- 3. RustDesk (remote desktop over the tailnet) ----------
-step "RustDesk"
-install_cask "RustDesk" "rustdesk" "see README §RustDesk over Tailscale for the Direct-IP-access config"
 add_login_item "/Applications/RustDesk.app"
 
-# ---------- 4. OpenCode (headless AI coding agent) ----------
-step "OpenCode"
-if command -v opencode &>/dev/null; then
-  ok "already installed ($(opencode --version 2>/dev/null || echo present))"
-else
-  curl -fsSL https://opencode.ai/install | bash
-  # installer drops the binary in ~/.opencode/bin
-  if ! grep -q 'opencode/bin' ~/.zshrc 2>/dev/null; then
-    echo 'export PATH="$HOME/.opencode/bin:$PATH"' >> ~/.zshrc
-  fi
-  export PATH="$HOME/.opencode/bin:$PATH"
-fi
-
-# ---------- 5. OpenChamber (web UI for OpenCode) ----------
+# ---------- 4. OpenChamber (web UI for OpenCode) ----------
 step "OpenChamber"
 if command -v openchamber &>/dev/null; then
   ok "already installed"
@@ -172,17 +123,7 @@ ensure_openchamber_symlink() {
 }
 ensure_openchamber_symlink
 
-# ---------- 6. Hermes Agent (Nous Research) ----------
-step "Hermes Agent"
-if command -v hermes &>/dev/null; then
-  ok "already installed"
-else
-  # --skip-setup keeps bootstrap non-interactive; user runs `hermes setup` manually.
-  curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash -s -- --skip-setup
-  warn "run \`hermes setup\` after this script finishes to pick a model + gateway"
-fi
-
-# ---------- 7. launchd services (auto-start on boot) ----------
+# ---------- 5. launchd services (auto-start on boot) ----------
 step "launchd services"
 LAUNCH_DIR="$HOME/Library/LaunchAgents"
 mkdir -p "$LAUNCH_DIR"
@@ -255,7 +196,7 @@ unset esc_pw
 # Uncomment to auto-start the messaging gateway:
 # install_plist "com.nousresearch.hermes-gateway"
 
-# ---------- 8. headless-server polish (optional but recommended) ----------
+# ---------- 6. headless-server polish (optional but recommended) ----------
 step "Headless server tweaks"
 if [[ "${HOMELAB_HEADLESS:-0}" == "1" ]]; then
   sudo pmset -a \
