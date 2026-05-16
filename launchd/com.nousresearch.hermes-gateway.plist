@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.nousresearch.hermes-gateway</string>
+
+  <!-- Run the Hermes messaging gateway (Telegram/Discord/Slack/Signal/...)
+       Disabled by default in bootstrap.sh — uncomment the install_plist
+       line to enable. You MUST run `hermes gateway setup` first to add
+       at least one platform's credentials. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>__HOME__/.local/bin/hermes</string>
+    <string>gateway</string>
+    <string>start</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>__HOME__</string>
+    <key>PATH</key>
+    <string>__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <key>RunAtLoad</key>          <true/>
+  <key>KeepAlive</key>          <true/>
+  <key>ProcessType</key>        <string>Background</string>
+
+  <key>StandardOutPath</key>    <string>__HOME__/Library/Logs/homelab/hermes.log</string>
+  <key>StandardErrorPath</key>  <string>__HOME__/Library/Logs/homelab/hermes.err</string>
+</dict>
+</plist>

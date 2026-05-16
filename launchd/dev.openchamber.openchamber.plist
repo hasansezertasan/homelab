@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.openchamber.openchamber</string>
+
+  <!-- OpenChamber web/PWA on :3000, bound to 0.0.0.0 so it is reachable
+       from the Tailscale IP. Tailscale's ACLs gate access; this is safe
+       as long as your tailnet stays private. Change to your tailnet IP
+       if you also want to block LAN. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/openchamber</string>
+    <string>serve</string>
+    <string>--port</string>
+    <string>3000</string>
+    <string>--host</string>
+    <string>0.0.0.0</string>
+    <string>--ui-password</string>
+    <string>CHANGE-ME-BEFORE-LOADING</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>__HOME__</string>
+    <!-- Tell OpenChamber to connect to the headless OpenCode we already started. -->
+    <key>OPENCODE_HOST</key>
+    <string>http://127.0.0.1:4096</string>
+    <key>OPENCODE_SKIP_START</key>
+    <string>true</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <key>RunAtLoad</key>          <true/>
+  <key>KeepAlive</key>          <true/>
+  <key>ProcessType</key>        <string>Background</string>
+
+  <!-- Wait for opencode.service-equivalent: launchd has no "After=", but
+       KeepAlive + the OPENCODE_HOST localhost target means OpenChamber will
+       retry until OpenCode is up. -->
+
+  <key>StandardOutPath</key>    <string>__HOME__/Library/Logs/homelab/openchamber.log</string>
+  <key>StandardErrorPath</key>  <string>__HOME__/Library/Logs/homelab/openchamber.err</string>
+</dict>
+</plist>

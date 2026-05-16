@@ -1,0 +1,4 @@
+[tools]
+markdownlint-cli2 = "latest"
+shellcheck = "latest"
+shfmt = "latest"
