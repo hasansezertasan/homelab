@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+# =====================================================================
+# MacBook M1 Home Lab Bootstrap
+# ---------------------------------------------------------------------
+# Installs: Homebrew + CLI tools (git, gh, mise, uv, bun, jq, ripgrep, fd, bat),
+#           OrbStack, Tailscale, RustDesk, OpenCode, OpenChamber, Hermes
+# Target  : Apple Silicon (M1/M2/M3/M4), clean macOS install
+# Idempotent: re-running skips anything already installed.
+# =====================================================================
+
+set -euo pipefail
+
+# ---------- pretty output ----------
+BOLD=$'\033[1m'; DIM=$'\033[2m'; RED=$'\033[31m'; GRN=$'\033[32m'
+YEL=$'\033[33m'; BLU=$'\033[34m'; RST=$'\033[0m'
+
+step()  { printf "\n${BOLD}${BLU}==>${RST} ${BOLD}%s${RST}\n" "$*"; }
+ok()    { printf "    ${GRN}✓${RST} %s\n" "$*"; }
+skip()  { printf "    ${DIM}·${RST} ${DIM}%s${RST}\n" "$*"; }
+warn()  { printf "    ${YEL}!${RST} %s\n" "$*"; }
+fail()  { printf "    ${RED}✗${RST} %s\n" "$*" >&2; exit 1; }
+
+# install_cask APP_NAME CASK [POST_INSTALL_NOTE]
+# Idempotent cask install — guards on /Applications/${APP_NAME}.app presence.
+install_cask() {
+  local app="$1" cask="$2" note="${3:-}"
+  if [[ -d "/Applications/${app}.app" ]]; then
+    ok "${app} already installed"
+  else
+    brew install --cask "$cask"
+    ok "${app} installed${note:+ — $note}"
+  fi
+}
+
+# ---------- sanity checks ----------
+[[ "$(uname -s)" == "Darwin" ]]   || fail "This script is macOS-only."
+[[ "$(uname -m)" == "arm64" ]]    || fail "Apple Silicon required (script pins /opt/homebrew)."
+[[ "$EUID" -ne 0 ]]                || fail "Don't run as root. The script will sudo when needed."
+
+# Resolve script dir so we can find launchd/ siblings.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ---------- 0. Xcode CLT (Homebrew prereq) ----------
+step "Xcode Command Line Tools"
+if xcode-select -p &>/dev/null; then
+  ok "already installed"
+else
+  warn "installing — a dialog will pop up; click Install and wait, then re-run this script"
+  xcode-select --install || true
+  fail "RERUN REQUIRED: re-invoke ./bootstrap.sh after Xcode CLT install finishes."
+fi
+
+# ---------- 1. Homebrew ----------
+step "Homebrew"
+if command -v brew &>/dev/null; then
+  ok "already installed ($(brew --version | head -1))"
+else
+  NONINTERACTIVE=1 /bin/bash -c \
+    "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  if ! grep -q 'brew shellenv' ~/.zprofile 2>/dev/null; then
+    echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+  fi
+fi
+# Apple Silicon: brew lives under /opt/homebrew. Fail loud if missing.
+[[ -x /opt/homebrew/bin/brew ]] || fail "/opt/homebrew/bin/brew missing — Apple Silicon required."
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+# ---------- 1b. CLI tools (agent staples + runtimes) ----------
+step "CLI tools"
+BREW_FORMULAE=(git gh mise uv jq ripgrep fd bat)
+for pkg in "${BREW_FORMULAE[@]}"; do
+  if brew list --formula "$pkg" &>/dev/null; then
+    skip "$pkg already installed"
+  else
+    brew install "$pkg"
+    ok "$pkg installed"
+  fi
+done
+
+if command -v bun &>/dev/null; then
+  skip "bun already installed"
+else
+  brew install oven-sh/bun/bun
+  ok "bun installed"
+fi
+
+# ---------- 1c. OrbStack (Docker runtime — lighter than Docker Desktop) ----------
+step "OrbStack"
+install_cask "OrbStack" "orbstack" "launch OrbStack.app once to start the Docker engine"
+
+# ---------- 2. Tailscale (mesh VPN — must be first) ----------
+step "Tailscale"
+# tailscale-app is the new cask name; older Homebrew uses `tailscale`.
+if brew info --cask tailscale-app &>/dev/null; then
+  tailscale_cask="tailscale-app"
+else
+  tailscale_cask="tailscale"
+fi
+install_cask "Tailscale" "$tailscale_cask" "open Tailscale.app and sign in before the next reboot"
+
+# ---------- 3. RustDesk (remote desktop over the tailnet) ----------
+step "RustDesk"
+install_cask "RustDesk" "rustdesk" "see docs/RUSTDESK.md for the Direct-IP-access config"
+
+# ---------- 4. OpenCode (headless AI coding agent) ----------
+step "OpenCode"
+if command -v opencode &>/dev/null; then
+  ok "already installed ($(opencode --version 2>/dev/null || echo present))"
+else
+  curl -fsSL https://opencode.ai/install | bash
+  # installer drops the binary in ~/.opencode/bin
+  if ! grep -q 'opencode/bin' ~/.zshrc 2>/dev/null; then
+    echo 'export PATH="$HOME/.opencode/bin:$PATH"' >> ~/.zshrc
+  fi
+  export PATH="$HOME/.opencode/bin:$PATH"
+fi
+
+# ---------- 5. OpenChamber (web UI for OpenCode) ----------
+step "OpenChamber"
+if command -v openchamber &>/dev/null; then
+  ok "already installed"
+else
+  curl -fsSL https://raw.githubusercontent.com/openchamber/openchamber/main/scripts/install.sh | bash
+fi
+
+# ---------- 6. Hermes Agent (Nous Research) ----------
+step "Hermes Agent"
+if command -v hermes &>/dev/null; then
+  ok "already installed"
+else
+  curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+  warn "run \`hermes setup\` after this script finishes to pick a model + gateway"
+fi
+
+# ---------- 7. launchd services (auto-start on boot) ----------
+step "launchd services"
+LAUNCH_DIR="$HOME/Library/LaunchAgents"
+mkdir -p "$LAUNCH_DIR"
+
+install_plist() {
+  local name="$1"
+  local src="${SCRIPT_DIR}/launchd/${name}.plist"
+  local dst="${LAUNCH_DIR}/${name}.plist"
+
+  [[ -f "$src" ]] || { warn "missing template: $src"; return; }
+
+  # Substitute $HOME so the plist works on any user's machine.
+  sed "s|__HOME__|${HOME}|g" "$src" > "$dst"
+
+  # Reload cleanly: unload (ignore errors), then load.
+  launchctl unload "$dst" 2>/dev/null || true
+  launchctl load   "$dst"
+  ok "$name → ${dst}"
+}
+
+install_plist "dev.openchamber.opencode"
+
+# Refuse to load OpenChamber if the UI password is still the template placeholder.
+# The plist is the contract — user edits it before re-running bootstrap.
+if grep -q 'CHANGE-ME-BEFORE-LOADING' "${SCRIPT_DIR}/launchd/dev.openchamber.openchamber.plist"; then
+  warn "dev.openchamber.openchamber: skipping load — set a real --ui-password in launchd/dev.openchamber.openchamber.plist first"
+else
+  install_plist "dev.openchamber.openchamber"
+fi
+
+# Hermes runs interactively from the CLI/gateway by default; no plist by default.
+# Uncomment to auto-start the messaging gateway:
+# install_plist "com.nousresearch.hermes-gateway"
+
+# ---------- 8. headless-server polish (optional but recommended) ----------
+step "Headless server tweaks"
+if [[ "${HOMELAB_HEADLESS:-0}" == "1" ]]; then
+  sudo pmset -a \
+    sleep 0 displaysleep 10 disksleep 0 powernap 1 \
+    lidwake 1 acwake 1 disablesleep 1
+  sudo systemsetup -setrestartfreeze on 2>/dev/null || true
+  ok "sleep disabled (incl. clamshell), wake-on-AC enabled, freeze-restart on"
+  warn "lid-closed-awake uses pmset disablesleep — Apple-unsupported but stable on M1"
+else
+  skip "set HOMELAB_HEADLESS=1 to disable sleep (incl. lid-closed) and configure auto-wake"
+fi
+
+# ---------- done ----------
+cat <<EOF
+
+${GRN}${BOLD}Done.${RST} Next steps:
+
+  ${BOLD}1.${RST} Open Tailscale.app and sign in. Note your machine's 100.x.x.x address.
+  ${BOLD}2.${RST} Open RustDesk → Settings → Security → enable ${BOLD}Direct IP Access${RST}
+     and set a permanent password. (See docs/RUSTDESK.md)
+  ${BOLD}3.${RST} Run ${BOLD}hermes setup${RST} to pick a model provider and configure gateways.
+  ${BOLD}4.${RST} OpenChamber is running on ${BOLD}http://localhost:3000${RST}
+     (or http://<tailscale-ip>:3000 from anywhere on your tailnet).
+  ${BOLD}5.${RST} For headless Mac mode: re-run with ${BOLD}HOMELAB_HEADLESS=1 ./bootstrap.sh${RST}
+
+Logs for the launchd services live in ${DIM}~/Library/Logs/homelab/${RST}.
+
+EOF
