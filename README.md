@@ -27,7 +27,9 @@ curl -fsSL https://raw.githubusercontent.com/hasansezertasan/homelab/main/instal
 
 Then:
 
-1. Open **Tailscale.app** and sign in.
+1. Sign in to **Tailscale**:
+   - GUI: open Tailscale.app, click "Log in".
+   - Headless / phone-driven: run `tailscale login --qr` in Terminal and scan the printed QR with your phone — no browser on the Mac needed.
 2. Open **RustDesk** → enable Direct IP Access (see `docs/RUSTDESK.md`).
 3. Run `hermes setup` to pick a model + configure platforms.
 4. Edit the **repo** template at `launchd/dev.openchamber.openchamber.plist`
@@ -43,7 +45,7 @@ Then:
 ## What it does
 
 - Installs Homebrew (Apple Silicon, `/opt/homebrew`).
-- `brew install`: `git`, `gh`, `mise`, `uv`, `bun`, `jq`, `ripgrep`, `fd`, `bat`.
+- `brew install`: `git`, `gh`, `mise`, `uv`, `node`, `bun`, `jq`, `ripgrep`, `fd`, `bat`.
 - `brew install --cask`: Tailscale, RustDesk, OrbStack.
 - `curl | bash` (official installers): OpenCode, OpenChamber, Hermes.
 - Drops two launchd plists in `~/Library/LaunchAgents/` so OpenCode and

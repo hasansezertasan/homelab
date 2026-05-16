@@ -67,7 +67,7 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 
 # ---------- 1b. CLI tools (agent staples + runtimes) ----------
 step "CLI tools"
-BREW_FORMULAE=(git gh mise uv jq ripgrep fd bat)
+BREW_FORMULAE=(git gh mise uv node jq ripgrep fd bat)
 for pkg in "${BREW_FORMULAE[@]}"; do
   if brew list --formula "$pkg" &>/dev/null; then
     skip "$pkg already installed"
