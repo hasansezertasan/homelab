@@ -8,6 +8,8 @@ One-shot bootstrap that turns a clean Apple Silicon Mac into a personal home ser
 
 Nothing is exposed to the public internet. Tailscale ACLs are the firewall.
 
+Entry points: `install.sh` is the remote `curl | bash` bootstrapper (clones repo + runs `bootstrap.sh`); `bootstrap.sh` is the local installer.
+
 ## Commands
 
 ```bash
@@ -22,7 +24,9 @@ No linter, no test suite. Validate shell edits with `bash -n bootstrap.sh` and `
 ## Architecture
 
 - `bootstrap.sh` — single installer. Sections numbered 0-8: Xcode CLT → Homebrew → Tailscale → RustDesk → OpenCode → OpenChamber → Hermes → launchd → optional headless tweaks. Uses `step/ok/skip/warn/fail` helpers for output. `set -euo pipefail`.
+- `install.sh` — remote bootstrap. Installs Xcode CLT, clones repo to `~/homelab`, execs `bootstrap.sh`.
 - `launchd/*.plist` — templates with `__HOME__` placeholder. `install_plist()` substitutes via `sed`, writes to `~/Library/LaunchAgents/`, then `launchctl unload || true` + `launchctl load` for clean reload. Hermes plist exists but is commented out (opt-in).
+- `mise.toml` — per-project runtime pins for agents using `mise`.
 - `status.sh` / `teardown.sh` — companions to bootstrap.
 
 ## Invariants
