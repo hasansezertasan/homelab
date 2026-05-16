@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-One-shot bootstrap that turns a clean Apple Silicon Mac into a personal home server. Pure shell + launchd plists — no application code, no tests, no build step. Five tools layered behind Tailscale: Tailscale (mesh VPN), RustDesk (remote desktop), Hermes (AI agent), OpenCode (`:4096` localhost), OpenChamber (`:3000` tailnet). Dokploy is deferred — see `docs/DOKPLOY-LATER.md`.
+One-shot bootstrap that turns a clean Apple Silicon Mac into a personal home server. Pure shell + launchd plists — no application code, no tests, no build step. Five tools layered behind Tailscale: Tailscale (mesh VPN), RustDesk (remote desktop), Hermes (AI agent), OpenCode (`:4096` localhost), OpenChamber (`:3000` tailnet). Dokploy is deferred — see README §Dokploy (later, via Lima).
 
 Nothing is exposed to the public internet. Tailscale ACLs are the firewall.
 
@@ -36,9 +36,9 @@ No linter, no test suite. Validate shell edits with `bash -n bootstrap.sh` and `
 - Never `sudo` the whole script — `bootstrap.sh` refuses `EUID==0` and calls `sudo` only inside the headless section.
 - Installer URLs (`curl | bash`) are pinned to upstream `main` for OpenCode / OpenChamber / Hermes — changing these is a supply-chain decision, flag it.
 - Plists use `__HOME__` placeholder, never hard-coded paths. New plists must follow.
-- Secrets/passwords (e.g. OpenChamber UI password marked `CHANGE-ME-BEFORE-LOADING`) live in plists the user edits before re-running bootstrap. Don't bake real values into templates.
+- Secrets/passwords never live in repo templates. Plists use `__PLACEHOLDER__` tokens (e.g. `__OPENCHAMBER_UI_PASSWORD__`); `install_plist` substitutes at install time from values prompted on first run and stored under `~/.config/homelab/` (mode 600). Subsequent runs reuse stored values for idempotency. `$VARNAME` env-var overrides are supported for non-interactive bootstrap.
 
 ## Conventions
 
-- Document-Driven Development: README + `docs/*.md` are the contract. Update docs first, then make `bootstrap.sh` match.
+- Document-Driven Development: README is the contract (per-tool guides live inline as collapsibles in §Per-tool guides). Update README first, then make `bootstrap.sh` match.
 - Conventional Commits, Conventional Branch, Conventional PR titles (per global CLAUDE.md).
