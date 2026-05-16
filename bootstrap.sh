@@ -118,7 +118,7 @@ add_login_item "/Applications/Tailscale.app"
 
 # ---------- 3. RustDesk (remote desktop over the tailnet) ----------
 step "RustDesk"
-install_cask "RustDesk" "rustdesk" "see docs/RUSTDESK.md for the Direct-IP-access config"
+install_cask "RustDesk" "rustdesk" "see README §RustDesk over Tailscale for the Direct-IP-access config"
 add_login_item "/Applications/RustDesk.app"
 
 # ---------- 4. OpenCode (headless AI coding agent) ----------
@@ -157,15 +157,55 @@ step "launchd services"
 LAUNCH_DIR="$HOME/Library/LaunchAgents"
 mkdir -p "$LAUNCH_DIR"
 
+# Stored OpenChamber UI password — gitignored location, mode 600. Survives
+# re-runs so bootstrap stays idempotent. Rotate with `rm` + re-run.
+OPENCHAMBER_PWFILE="$HOME/.config/homelab/openchamber.password"
+
+# Sets $OPENCHAMBER_UI_PASSWORD by, in order: env var, stored file, interactive
+# prompt. Reads from /dev/tty so `curl | bash` invocations still get a TTY.
+ensure_openchamber_password() {
+  mkdir -p "$(dirname "$OPENCHAMBER_PWFILE")"
+  chmod 700 "$(dirname "$OPENCHAMBER_PWFILE")"
+
+  if [[ -n "${OPENCHAMBER_UI_PASSWORD:-}" ]]; then
+    printf '%s' "$OPENCHAMBER_UI_PASSWORD" > "$OPENCHAMBER_PWFILE"
+    chmod 600 "$OPENCHAMBER_PWFILE"
+    ok "OpenChamber UI password from \$OPENCHAMBER_UI_PASSWORD → $OPENCHAMBER_PWFILE"
+    return
+  fi
+
+  if [[ -f "$OPENCHAMBER_PWFILE" ]]; then
+    OPENCHAMBER_UI_PASSWORD="$(cat "$OPENCHAMBER_PWFILE")"
+    skip "OpenChamber UI password loaded from $OPENCHAMBER_PWFILE"
+    return
+  fi
+
+  [[ -r /dev/tty ]] || fail "no TTY for OpenChamber password prompt — set \$OPENCHAMBER_UI_PASSWORD or pre-create $OPENCHAMBER_PWFILE"
+
+  local pw pw2
+  while :; do
+    read -r -s -p "    Set OpenChamber UI password: " pw < /dev/tty; echo
+    [[ -n "$pw" ]] || { warn "empty — try again"; continue; }
+    read -r -s -p "    Confirm: " pw2 < /dev/tty; echo
+    [[ "$pw" == "$pw2" ]] || { warn "mismatch — try again"; continue; }
+    break
+  done
+  printf '%s' "$pw" > "$OPENCHAMBER_PWFILE"
+  chmod 600 "$OPENCHAMBER_PWFILE"
+  OPENCHAMBER_UI_PASSWORD="$pw"
+  ok "OpenChamber UI password saved to $OPENCHAMBER_PWFILE (mode 600)"
+}
+
+# install_plist NAME [EXTRA_SED_EXPR ...]
+# Substitutes __HOME__ plus any extra `-e` sed exprs the caller passes.
 install_plist() {
-  local name="$1"
+  local name="$1"; shift
   local src="${SCRIPT_DIR}/launchd/${name}.plist"
   local dst="${LAUNCH_DIR}/${name}.plist"
 
   [[ -f "$src" ]] || { warn "missing template: $src"; return; }
 
-  # Substitute $HOME so the plist works on any user's machine.
-  sed "s|__HOME__|${HOME}|g" "$src" > "$dst"
+  sed -e "s|__HOME__|${HOME}|g" "$@" "$src" > "$dst"
 
   # Reload cleanly: unload (ignore errors), then load.
   launchctl unload "$dst" 2>/dev/null || true
@@ -175,13 +215,11 @@ install_plist() {
 
 install_plist "dev.openchamber.opencode"
 
-# Refuse to load OpenChamber if the UI password is still the template placeholder.
-# The plist is the contract — user edits it before re-running bootstrap.
-if grep -q 'CHANGE-ME-BEFORE-LOADING' "${SCRIPT_DIR}/launchd/dev.openchamber.openchamber.plist"; then
-  warn "dev.openchamber.openchamber: skipping load — set a real --ui-password in launchd/dev.openchamber.openchamber.plist first"
-else
-  install_plist "dev.openchamber.openchamber"
-fi
+ensure_openchamber_password
+# Escape sed metacharacters (\, &, |) in the password before substitution.
+esc_pw=$(printf '%s' "$OPENCHAMBER_UI_PASSWORD" | sed -e 's/[\\&|]/\\&/g')
+install_plist "dev.openchamber.openchamber" -e "s|__OPENCHAMBER_UI_PASSWORD__|${esc_pw}|g"
+unset esc_pw
 
 # Hermes runs interactively from the CLI/gateway by default; no plist by default.
 # Uncomment to auto-start the messaging gateway:
@@ -207,7 +245,7 @@ ${GRN}${BOLD}Done.${RST} Next steps:
 
   ${BOLD}1.${RST} Open Tailscale.app and sign in. Note your machine's 100.x.x.x address.
   ${BOLD}2.${RST} Open RustDesk → Settings → Security → enable ${BOLD}Direct IP Access${RST}
-     and set a permanent password. (See docs/RUSTDESK.md)
+     and set a permanent password. (See README §RustDesk over Tailscale)
   ${BOLD}3.${RST} Run ${BOLD}hermes setup${RST} to pick a model provider and configure gateways.
   ${BOLD}4.${RST} OpenChamber is running on ${BOLD}http://localhost:3000${RST}
      (or http://<tailscale-ip>:3000 from anywhere on your tailnet).

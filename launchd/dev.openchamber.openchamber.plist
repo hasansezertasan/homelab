@@ -19,7 +19,7 @@
     <string>--host</string>
     <string>0.0.0.0</string>
     <string>--ui-password</string>
-    <string>CHANGE-ME-BEFORE-LOADING</string>
+    <string>__OPENCHAMBER_UI_PASSWORD__</string>
   </array>
 
   <key>EnvironmentVariables</key>
