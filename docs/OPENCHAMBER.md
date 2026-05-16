@@ -16,6 +16,19 @@ OpenCode binds to localhost only — nothing reaches it except OpenChamber.
 OpenChamber binds to `0.0.0.0` so it's reachable from any device on your
 tailnet. Tailscale's ACLs are the firewall.
 
+## How OpenChamber finds OpenCode
+
+The two services share no config file. The coupling lives in
+`launchd/dev.openchamber.openchamber.plist` via two environment variables:
+
+- `OPENCODE_HOST=http://127.0.0.1:4096` — tells OpenChamber where the
+  already-running OpenCode listener is. If you change the OpenCode port in
+  `dev.openchamber.opencode.plist`, change this value to match.
+- `OPENCODE_SKIP_START=true` — stops OpenChamber from spawning its own
+  bundled OpenCode. Without this, you'd have two OpenCode processes fighting
+  over the same project lock files. Leave it `true` as long as the OpenCode
+  plist is loaded.
+
 ## First-time config
 
 1. **Set a real UI password.** Edit

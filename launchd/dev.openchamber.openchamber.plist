@@ -39,9 +39,9 @@
   <key>KeepAlive</key>          <true/>
   <key>ProcessType</key>        <string>Background</string>
 
-  <!-- Wait for opencode.service-equivalent: launchd has no "After=", but
-       KeepAlive + the OPENCODE_HOST localhost target means OpenChamber will
-       retry until OpenCode is up. -->
+  <!-- launchd has no dependency ordering primitive. KeepAlive + the
+       OPENCODE_HOST localhost target means OpenChamber will retry until
+       the OpenCode plist's listener at 127.0.0.1:4096 is up. -->
 
   <key>StandardOutPath</key>    <string>__HOME__/Library/Logs/homelab/openchamber.log</string>
   <key>StandardErrorPath</key>  <string>__HOME__/Library/Logs/homelab/openchamber.err</string>

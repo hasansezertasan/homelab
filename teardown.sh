@@ -7,10 +7,12 @@ set -euo pipefail
 
 LAUNCH_DIR="$HOME/Library/LaunchAgents"
 
-echo "==> Reverting headless pmset tweaks"
+echo "==> Reverting headless pmset tweaks (only what bootstrap.sh set)"
 sudo pmset -a disablesleep 0 2>/dev/null || true
-sudo pmset -a sleep 1 2>/dev/null || true
-echo "    pmset disablesleep=0, sleep=1 (defaults restored — review with: pmset -g)"
+sudo pmset -a sleep 1 displaysleep 10 disksleep 10 powernap 0 lidwake 1 acwake 0 2>/dev/null || true
+sudo systemsetup -setrestartfreeze off 2>/dev/null || true
+echo "    pmset tweaks reverted to common defaults — verify with: pmset -g"
+echo "    (does not restore any pre-bootstrap custom pmset config)"
 
 echo "==> Unloading launchd jobs"
 for label in \
@@ -33,7 +35,9 @@ done
 
 echo "==> Removing OpenChamber / OpenCode / Hermes binaries"
 brew uninstall openchamber 2>/dev/null || true
-rm -rf "$HOME/.opencode/bin"  # leave config/data
+# Only the installed binary is removed; ~/.opencode/auth.json + other state
+# files remain. Delete ~/.opencode manually for a full wipe.
+rm -rf "$HOME/.opencode/bin"
 rm -f  "$HOME/.local/bin/hermes"
 
 echo

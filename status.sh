@@ -23,17 +23,22 @@ check_port() {
 
 check_launchd() {
   local label="$1"
-  if launchctl list | grep -q "$label"; then
-    local pid; pid=$(launchctl list | awk -v l="$label" '$3==l {print $1}')
-    printf "  ${GRN}✓${RST} %-40s pid=%s\n" "$label" "$pid"
-  else
+  local pid
+  pid=$(launchctl list | awk -v l="$label" '$3==l {print $1; found=1} END {exit !found}') || {
     printf "  ${RED}✗${RST} %-40s not loaded\n" "$label"
-  fi
+    return
+  }
+  printf "  ${GRN}✓${RST} %-40s pid=%s\n" "$label" "${pid:-?}"
 }
 
 echo "${BOLD}Binaries${RST}"
 check_cmd tailscale
-check_cmd rustdesk || check_cmd RustDesk
+# RustDesk ships as a .app bundle on macOS, no CLI by default — check both.
+if command -v rustdesk &>/dev/null || command -v RustDesk &>/dev/null || [[ -d /Applications/RustDesk.app ]]; then
+  printf "  ${GRN}✓${RST} %-14s ${DIM}installed${RST}\n" "rustdesk"
+else
+  printf "  ${RED}✗${RST} %-14s ${DIM}not installed${RST}\n" "rustdesk"
+fi
 check_cmd opencode
 check_cmd openchamber
 check_cmd hermes

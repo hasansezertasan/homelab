@@ -30,8 +30,14 @@ Then:
 1. Open **Tailscale.app** and sign in.
 2. Open **RustDesk** → enable Direct IP Access (see `docs/RUSTDESK.md`).
 3. Run `hermes setup` to pick a model + configure platforms.
-4. Edit `launchd/dev.openchamber.openchamber.plist`, set a real UI password
-   where it says `CHANGE-ME-BEFORE-LOADING`, re-run `./bootstrap.sh`.
+4. Edit the **repo** template at `launchd/dev.openchamber.openchamber.plist`
+   (the source of truth — not the copy under `~/Library/LaunchAgents/`).
+   Replace `CHANGE-ME-BEFORE-LOADING` with a real password, then re-run
+   `./bootstrap.sh`. `bootstrap.sh` `sed`-substitutes `__HOME__` and copies
+   into `~/Library/LaunchAgents/` for you, then loads the service.
+   First bootstrap run refuses to load this plist until you replace the
+   placeholder, so you can install the rest safely without leaking a default
+   password.
 5. Visit `http://<mac-tailscale-ip>:3000` from your phone.
 
 ## What it does
@@ -40,8 +46,11 @@ Then:
 - `brew install`: `git`, `gh`, `mise`, `uv`, `bun`, `jq`, `ripgrep`, `fd`, `bat`.
 - `brew install --cask`: Tailscale, RustDesk, OrbStack.
 - `curl | bash` (official installers): OpenCode, OpenChamber, Hermes.
-- Drops three launchd plists in `~/Library/LaunchAgents/` so OpenCode and
-  OpenChamber auto-start on boot. (Hermes gateway is opt-in.)
+- Drops two launchd plists in `~/Library/LaunchAgents/` so OpenCode and
+  OpenChamber auto-start on boot. (Hermes gateway plist ships in the repo
+  but is opt-in — uncomment one line in `bootstrap.sh` to enable.)
+- OpenChamber's plist won't be loaded until you replace the `CHANGE-ME-BEFORE-LOADING`
+  placeholder in `launchd/dev.openchamber.openchamber.plist` with a real password.
 - Optional: with `HOMELAB_HEADLESS=1`, disables sleep and configures the Mac
   to wake on power and restart-after-freeze — closer to a real server.
 
@@ -109,8 +118,9 @@ If this Mac is going to live in a closet:
 HOMELAB_HEADLESS=1 ./bootstrap.sh
 ```
 
-This disables sleep, enables wake-on-AC and wake-on-lid, and turns on
-auto-restart-after-freeze. You'll also want, in System Settings:
+This disables system sleep (incl. clamshell via `pmset disablesleep`), wakes
+the Mac when AC power is restored, wakes on lid-open, lets the display sleep
+after 10 minutes, and turns on auto-restart-after-freeze. You'll also want, in System Settings:
 
 - Users & Groups → set "Automatic login" to your homelab user.
 - General → Sharing → enable Screen Sharing (a fallback to RustDesk).

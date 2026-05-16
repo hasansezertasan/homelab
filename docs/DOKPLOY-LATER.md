@@ -30,9 +30,11 @@ curl -sSL https://dokploy.com/install.sh | sudo sh
 
 ## Reach it from the Mac
 
-Lima auto-forwards ports. Open `http://localhost:3000` on the Mac (different
-from OpenChamber — change Dokploy's port, or change OpenChamber's, before you
-do this).
+Lima auto-forwards ports. Dokploy defaults to `:3000` — same as OpenChamber,
+which is hard-coded in `launchd/dev.openchamber.openchamber.plist`. **Change
+Dokploy's port** (e.g. forward to `:3001` via Lima's port-forwarding config)
+rather than the OpenChamber plist — the rest of the repo's docs assume
+OpenChamber on `:3000`.
 
 To reach Dokploy from your phone over the tailnet:
 
