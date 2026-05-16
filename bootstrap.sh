@@ -142,6 +142,36 @@ else
   curl -fsSL https://raw.githubusercontent.com/openchamber/openchamber/main/scripts/install.sh | bash
 fi
 
+# Upstream installer picks pnpm > bun > yarn > npm. pnpm/bun globals land in
+# dirs (~/Library/pnpm, ~/.bun/bin) that may not be on PATH, and the launchd
+# plist hardcodes /opt/homebrew/bin/openchamber. Symlink the real binary there
+# so PATH lookup and the plist both resolve.
+ensure_openchamber_symlink() {
+  local target="/opt/homebrew/bin/openchamber"
+  if [[ -L "$target" || -x "$target" ]]; then
+    skip "openchamber already at $target"
+    return
+  fi
+
+  local src=""
+  for cand in \
+    "$(pnpm bin -g 2>/dev/null)/openchamber" \
+    "$HOME/Library/pnpm/openchamber" \
+    "$HOME/.bun/bin/openchamber" \
+    "$(npm prefix -g 2>/dev/null)/bin/openchamber" \
+    "$(yarn global bin 2>/dev/null)/openchamber"; do
+    if [[ -x "$cand" ]]; then
+      src="$cand"
+      break
+    fi
+  done
+
+  [[ -z "$src" ]] && fail "openchamber binary not found after install"
+  ln -sfn "$src" "$target"
+  ok "openchamber symlinked: $target → $src"
+}
+ensure_openchamber_symlink
+
 # ---------- 6. Hermes Agent (Nous Research) ----------
 step "Hermes Agent"
 if command -v hermes &>/dev/null; then
