@@ -13,8 +13,11 @@ directly, peer-to-peer. No port forwarding, no hbbs/hbbr servers, no keys.
    - Settings → **Security**:
      - ☑ **Enable Direct IP Access**
      - **Password** → set a permanent password (not "one-time"). Strong one.
-   - Settings → Display: choose a codec — H264 or H265 if your hardware
-     supports it, otherwise VP9.
+   - Settings → **Display** → **Default codec**: pick **H265** (best
+     quality/bandwidth), then H264, then VP9. Apple Silicon has VideoToolbox
+     hardware decode for H264 and H265 (HEVC); VP9 is software-only on macOS
+     and will burn CPU. Greyed-out entries = your build/hardware can't decode
+     them.
 3. Grant macOS permissions when prompted:
    - System Settings → Privacy & Security → **Screen Recording** → enable RustDesk
    - **Accessibility** → enable RustDesk
