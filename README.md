@@ -44,7 +44,7 @@ Then:
 
 - Installs Homebrew (Apple Silicon, `/opt/homebrew`).
 - `brew bundle` against `./Brewfile` — formulae (`git`, `gh`, `mise`, `uv`,
-  `node`, `bun`, `jq`, `ripgrep`, `fd`, `bat`, `ctx7`, `opencode`,
+  `node`, `bun`, `jq`, `ripgrep`, `fd`, `bat`, `zoxide`, `ctx7`, `opencode`,
   `hermes-agent`) + casks (`tailscale-app`, `rustdesk`, `orbstack`). See
   `Brewfile` for the canonical list.
 - Registers Tailscale and RustDesk as macOS **Login Items** so the GUI apps
@@ -58,7 +58,9 @@ Then:
   `~/.config/homelab/openchamber.password` (mode 600) so re-runs stay
   non-interactive. Set `OPENCHAMBER_UI_PASSWORD` in the env to skip the prompt.
 - Optional: with `HOMELAB_HEADLESS=1`, disables sleep and configures the Mac
-  to wake on power and restart-after-freeze — closer to a real server.
+  to wake on power and restart-after-freeze — closer to a real server. Display
+  blanks after `HOMELAB_DISPLAYSLEEP` minutes (default `2`; set `0` to never
+  blank).
 - Installs Claude Code skill packs via `npx skills add` — currently
   [`obra/superpowers`](https://github.com/obra/superpowers). Edit the
   `SKILL_PACKS` array in `bootstrap.sh` §7 to add more.
@@ -79,6 +81,7 @@ anything already installed and reloads the launchd jobs cleanly.
 | `ripgrep`  | Fast code search — every agent's first move into an unfamiliar repo.   |
 | `fd`       | Fast file finder — `find` ergonomics without `find` syntax.            |
 | `bat`      | Syntax-highlighted `cat` for human eyes during RustDesk sessions.      |
+| `zoxide`   | Smarter `cd` — jump to frecent dirs. Add `eval "$(zoxide init zsh)"` to `~/.zshrc`. |
 | `ctx7`     | Context7 CLI — pull up-to-date library docs into agents and the shell. |
 | OrbStack   | Docker engine on Apple Silicon — lighter than Docker Desktop, free.    |
 
@@ -125,12 +128,15 @@ Per-tool setup guides live inline at the bottom of this README — see
 If this Mac is going to live in a closet:
 
 ```bash
-HOMELAB_HEADLESS=1 ./bootstrap.sh
+HOMELAB_HEADLESS=1 ./bootstrap.sh                         # default: display blanks after 2 min
+HOMELAB_HEADLESS=1 HOMELAB_DISPLAYSLEEP=5 ./bootstrap.sh   # custom timer
+HOMELAB_HEADLESS=1 HOMELAB_DISPLAYSLEEP=0 ./bootstrap.sh   # never blank the display
 ```
 
 This disables system sleep (incl. clamshell via `pmset disablesleep`), wakes
 the Mac when AC power is restored, wakes on lid-open, lets the display sleep
-after 10 minutes, and turns on auto-restart-after-freeze. You'll also want, in System Settings:
+after `HOMELAB_DISPLAYSLEEP` minutes (default `2`, `0` = never), and turns on
+auto-restart-after-freeze. You'll also want, in System Settings:
 
 - Users & Groups → set "Automatic login" to your homelab user.
 - General → Sharing → enable Screen Sharing (a fallback to RustDesk).

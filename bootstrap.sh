@@ -199,11 +199,19 @@ unset esc_pw
 # ---------- 6. headless-server polish (optional but recommended) ----------
 step "Headless server tweaks"
 if [[ "${HOMELAB_HEADLESS:-0}" == "1" ]]; then
+  displaysleep="${HOMELAB_DISPLAYSLEEP:-2}"
+  if ! [[ "$displaysleep" =~ ^[0-9]+$ ]]; then
+    fail "HOMELAB_DISPLAYSLEEP must be a non-negative integer (minutes; 0 = never), got: $displaysleep"
+  fi
   sudo pmset -a \
-    sleep 0 displaysleep 10 disksleep 0 powernap 1 \
+    sleep 0 displaysleep "$displaysleep" disksleep 0 powernap 1 \
     lidwake 1 acwake 1 disablesleep 1
   sudo systemsetup -setrestartfreeze on 2>/dev/null || true
-  ok "sleep disabled (incl. clamshell), wake-on-AC enabled, freeze-restart on"
+  if [[ "$displaysleep" == "0" ]]; then
+    ok "sleep disabled (incl. clamshell), display never sleeps, wake-on-AC enabled, freeze-restart on"
+  else
+    ok "sleep disabled (incl. clamshell), display sleeps after ${displaysleep} min, wake-on-AC enabled, freeze-restart on"
+  fi
   warn "lid-closed-awake uses pmset disablesleep — Apple-unsupported but stable on M1"
 else
   skip "set HOMELAB_HEADLESS=1 to disable sleep (incl. lid-closed) and configure auto-wake"

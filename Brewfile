@@ -12,6 +12,7 @@ brew "jq"
 brew "ripgrep"
 brew "fd"
 brew "bat"
+brew "zoxide"
 brew "ctx7"
 
 # Agents — homebrew/core ships official builds. Binaries land in
