@@ -44,9 +44,9 @@ Then:
 
 - Installs Homebrew (Apple Silicon, `/opt/homebrew`).
 - `brew bundle` against `./Brewfile` — formulae (`git`, `gh`, `mise`, `uv`,
-  `node`, `bun`, `jq`, `ripgrep`, `fd`, `bat`, `opencode`, `hermes-agent`) +
-  casks (`tailscale-app`, `rustdesk`, `orbstack`). See `Brewfile` for the
-  canonical list.
+  `node`, `bun`, `jq`, `ripgrep`, `fd`, `bat`, `ctx7`, `opencode`,
+  `hermes-agent`) + casks (`tailscale-app`, `rustdesk`, `orbstack`). See
+  `Brewfile` for the canonical list.
 - Registers Tailscale and RustDesk as macOS **Login Items** so the GUI apps
   relaunch on every reboot (visible/removable under System Settings → General
   → Login Items).
@@ -59,6 +59,9 @@ Then:
   non-interactive. Set `OPENCHAMBER_UI_PASSWORD` in the env to skip the prompt.
 - Optional: with `HOMELAB_HEADLESS=1`, disables sleep and configures the Mac
   to wake on power and restart-after-freeze — closer to a real server.
+- Installs Claude Code skill packs via `npx skills add` — currently
+  [`obra/superpowers`](https://github.com/obra/superpowers). Edit the
+  `SKILL_PACKS` array in `bootstrap.sh` §7 to add more.
 
 The script is **idempotent**. Re-run it as often as you want; it skips
 anything already installed and reloads the launchd jobs cleanly.
@@ -76,6 +79,7 @@ anything already installed and reloads the launchd jobs cleanly.
 | `ripgrep`  | Fast code search — every agent's first move into an unfamiliar repo.   |
 | `fd`       | Fast file finder — `find` ergonomics without `find` syntax.            |
 | `bat`      | Syntax-highlighted `cat` for human eyes during RustDesk sessions.      |
+| `ctx7`     | Context7 CLI — pull up-to-date library docs into agents and the shell. |
 | OrbStack   | Docker engine on Apple Silicon — lighter than Docker Desktop, free.    |
 
 ## The resulting architecture

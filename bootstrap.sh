@@ -209,6 +209,26 @@ else
   skip "set HOMELAB_HEADLESS=1 to disable sleep (incl. lid-closed) and configure auto-wake"
 fi
 
+# ---------- 7. Claude Code skill packs ----------
+# Installed via the `skills` CLI (npx, no global install needed). The CLI is
+# itself idempotent — re-runs no-op or pick up upstream updates, mirroring
+# how §2 `brew bundle` is trusted to handle re-runs.
+step "Claude Code skill packs"
+SKILL_PACKS=(
+  "obra/superpowers"
+)
+if command -v npx &>/dev/null; then
+  for pack in "${SKILL_PACKS[@]}"; do
+    if npx -y skills add "$pack"; then
+      ok "$pack"
+    else
+      warn "$pack — install failed (continuing)"
+    fi
+  done
+else
+  warn "npx missing — Brewfile should have installed node; skipping skill packs"
+fi
+
 # ---------- done ----------
 cat <<EOF
 
