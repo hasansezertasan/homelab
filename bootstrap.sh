@@ -213,13 +213,16 @@ fi
 # Installed via the `skills` CLI (npx, no global install needed). The CLI is
 # itself idempotent — re-runs no-op or pick up upstream updates, mirroring
 # how §2 `brew bundle` is trusted to handle re-runs.
+# `-g` installs into ~/.claude/skills so packs are available to every agent
+# session, not just this repo (the CLI defaults to project scope inside a git
+# checkout, which is the wrong default for a personal bootstrapper).
 step "Claude Code skill packs"
 SKILL_PACKS=(
   "obra/superpowers"
 )
 if command -v npx &>/dev/null; then
   for pack in "${SKILL_PACKS[@]}"; do
-    if npx -y skills add "$pack" --all; then
+    if npx -y skills add "$pack" -g --all; then
       ok "$pack"
     else
       warn "$pack — install failed (continuing)"
