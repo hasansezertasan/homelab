@@ -219,7 +219,7 @@ SKILL_PACKS=(
 )
 if command -v npx &>/dev/null; then
   for pack in "${SKILL_PACKS[@]}"; do
-    if npx -y skills add "$pack"; then
+    if npx -y skills add "$pack" --all; then
       ok "$pack"
     else
       warn "$pack — install failed (continuing)"
