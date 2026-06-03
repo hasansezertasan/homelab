@@ -519,6 +519,97 @@ Asahi later are trivial.
 
 </details>
 
+### Optio (later, via OrbStack Kubernetes)
+
+<details>
+<summary><strong>Kubernetes path for when you want Optio</strong></summary>
+
+[Optio](https://optio.host) ([source](https://github.com/jonwiggins/optio),
+MIT) is workflow orchestration for AI coding agents — it drives a ticket
+from creation through a merged PR, watches the PR, feeds CI failures back
+to the agent, and resumes on conflicts or review feedback. It's the
+supervisor layer that sits on top of agents like OpenCode, Claude Code,
+Codex, Copilot, or Gemini, which makes it a natural complement to the
+OpenCode + Hermes pair this homelab already runs.
+
+It's deferred for the same reason Dokploy is: runtime mismatch. The rest
+of the stack is `launchd` + native binaries. Optio ships as a Helm chart
+and assumes a Kubernetes cluster (Next.js dashboard on `:3100`, Fastify
+API on `:30400`, BullMQ workers, Postgres, Redis, one pod per repo). That's
+a new dependency class, so it lives outside `bootstrap.sh` until you opt in.
+
+#### Enable Kubernetes in OrbStack
+
+OrbStack (already installed via the `Brewfile`) ships a built-in
+Kubernetes distribution — no Docker Desktop required.
+
+```
+orb start k8s
+kubectl config use-context orbstack
+kubectl get nodes
+```
+
+(Allocate CPU/RAM in OrbStack Settings → Resources. Optio's components are
+modest, but agent pods spawned per repo will want headroom — start with
+4 CPU / 8 GB and grow.)
+
+#### Install Optio via Helm
+
+Follow the upstream Helm instructions in
+[jonwiggins/optio](https://github.com/jonwiggins/optio) — they're the
+source of truth and will drift faster than this README. The shape is:
+
+```
+helm repo add optio https://jonwiggins.github.io/optio
+helm repo update
+helm upgrade --install optio optio/optio \
+  --namespace optio --create-namespace \
+  --values ./optio-values.yaml
+```
+
+Keep your `optio-values.yaml` out of this repo — it'll contain GitHub
+tokens, agent API keys, and the dashboard admin secret. Stash it under
+`~/.config/homelab/optio-values.yaml` (mode 600) for symmetry with the
+existing secret-handling pattern.
+
+#### Reach it from the tailnet
+
+Optio's UI defaults to `:3100`. OrbStack's k8s exposes services on
+`localhost` by default; to make it reachable from your phone over the
+tailnet, expose the Mac's port (Tailscale's mesh handles the rest — no
+public ingress, ACLs are the firewall):
+
+```
+kubectl -n optio port-forward --address 0.0.0.0 svc/optio-web 3100:3100
+```
+
+Bookmark `http://<mac-tailscale-ip>:3100`. For a long-lived setup, wrap
+the `kubectl port-forward` in a launchd plist alongside the existing ones
+— but only after Optio settles into your workflow; a per-session forward
+is fine for evaluation.
+
+#### Why not bake it into `bootstrap.sh`?
+
+Three reasons, all soft:
+
+1. **Idempotency contract.** Every step in `bootstrap.sh` guards on
+   `command -v` or app paths and reloads launchd via unload-then-load.
+   `helm upgrade --install` is idempotent, but cluster state (CRDs, PVCs,
+   stuck pods) isn't, and `teardown.sh` would need a real uninstall path.
+2. **State surface.** Postgres + Redis volumes + agent credentials are a
+   bigger blast radius than the current "delete `~/.opencode` and you're
+   clean" model.
+3. **Audience.** Optio is opinionated about workflow — you want it after
+   you've decided "yes, I want autonomous PR loops on my tailnet,"
+   not as a default of the bootstrap.
+
+If you end up running Optio long-term and want it managed alongside the
+other services, the right move is a dedicated `homelab-optio` repo (or a
+`contrib/` directory here) that owns its values file, Helm hooks, and the
+port-forward plist — not new sections in `bootstrap.sh`.
+
+</details>
+
 ---
 
 ## License
