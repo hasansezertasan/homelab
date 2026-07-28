@@ -54,8 +54,17 @@ echo "${BOLD}Ports${RST}"
 check_port 4096 "OpenCode"
 check_port 3000 "OpenChamber"
 # Orca is opt-in (HOMELAB_ORCA=1) — only report its port when the plist exists,
-# so a deliberately-disabled Orca doesn't show as a failure.
-[[ -f "$HOME/Library/LaunchAgents/dev.onorca.orca.plist" ]] && check_port 6768 "Orca"
+# so a deliberately-disabled Orca doesn't show as a failure. Read the actual
+# port from the plist (bootstrap can override it via HOMELAB_ORCA_PORT) rather
+# than assuming the 6768 default.
+orca_plist="$HOME/Library/LaunchAgents/dev.onorca.orca.plist"
+if [[ -f "$orca_plist" ]]; then
+  # ProgramArguments is: orca serve --port <PORT> --pairing-address <ADDR>.
+  # -A1 prints the <string> line right after --port; extract its digits.
+  # Portable BSD-grep only (no gawk) — this repo is macOS-only.
+  orca_port=$(grep -A1 '<string>--port</string>' "$orca_plist" | grep -Eo '[0-9]+' | head -1)
+  check_port "${orca_port:-6768}" "Orca"
+fi
 
 echo
 echo "${BOLD}launchd${RST}"

@@ -8,9 +8,14 @@
 
   <!-- Orca's headless runtime server. `orca serve` starts and manages its own
        fleet of coding agents (it does NOT connect to the OpenCode :4096
-       listener the way OpenChamber does). Binds 0.0.0.0:__ORCA_PORT__ so it is
-       reachable from the Tailscale IP; Tailscale ACLs are the firewall, same
-       model as OpenChamber. Opt-in: installed only when HOMELAB_ORCA=1.
+       listener the way OpenChamber does). Opt-in: installed only when
+       HOMELAB_ORCA=1.
+
+       `orca serve` has no bind-host flag, so it binds 0.0.0.0:__ORCA_PORT__ —
+       reachable on ALL interfaces, including the local LAN, not just the
+       tailnet. The access control here is Orca's pairing (an E2EE device
+       credential), NOT a network firewall: an unpaired peer that reaches the
+       socket can't drive agents. Keep the Mac on your tailnet regardless.
 
        --pairing-address is only the address advertised to pairing clients; it
        does not change the bind address. bootstrap.sh substitutes the tailnet

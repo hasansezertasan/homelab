@@ -435,7 +435,7 @@ HOMELAB_ORCA=1 ./bootstrap.sh
 
 This installs `launchd/dev.onorca.orca.plist`, which runs:
 
-```
+```bash
 orca serve --port 6768 --pairing-address <your-tailnet-ip>
 ```
 
@@ -466,36 +466,42 @@ Override the port with `HOMELAB_ORCA_PORT=...` (default `6768`).
 #### Pairing a device
 
 On start, `orca serve` prints a one-time **pairing offer** — an
-`orca://pair?code=...` link — to its log. Use it to connect a client:
+`orca://pair?code=...` link — to its log. Read it into a variable (so the
+credential stays off-screen and out of your clipboard) and pass it along:
 
 ```bash
-# grab the latest offer from the launchd log
-grep -o 'orca://pair?[^ ]*' ~/Library/Logs/homelab/orca.log | tail -1
+# read the latest offer from the launchd log into a shell variable
+code=$(grep -o 'orca://pair?[^ ]*' ~/Library/Logs/homelab/orca.log | tail -1)
 
 # pair this machine's CLI (or another Mac) to the runtime
-orca environment add --name mac --pairing-code 'orca://pair?code=...'
+orca environment add --name mac --pairing-code "$code"
 ```
 
-For the **mobile companion app**, run `orca serve --mobile-pairing` in a
+The **mobile companion app** is the cleaner path — it keeps the credential out
+of argv and shell history entirely. Run `orca serve --mobile-pairing` in a
 terminal (stop the launchd job first so the port is free) to print a
 phone-scoped QR/link, then scan it in the app.
 
 > **Security.** A pairing offer is a device credential with E2EE material —
-> anyone who has it can drive your agents. `~/Library/Logs/homelab/orca.log`
-> contains it, so treat that log as a secret: don't paste it into shared
-> channels or proxy access logs. Rotate by restarting the service (below),
-> which mints a fresh offer.
+> anyone who has it can drive your agents. Two exposure points to mind:
+> `~/Library/Logs/homelab/orca.log` contains the offer (treat that log as a
+> secret — don't paste it into shared channels or proxy access logs), and
+> passing `--pairing-code` on the command line records it in your shell history
+> and process list. Prefer the mobile QR path; if you use the CLI, clear the
+> command from history afterward (e.g. zsh `print -rz` avoidance, or trim
+> `~/.zsh_history`). Rotate by restarting the service (below), which mints a
+> fresh offer.
 
 #### Logs
 
-```
+```bash
 tail -f ~/Library/Logs/homelab/orca.log
 tail -f ~/Library/Logs/homelab/orca.err
 ```
 
 #### Restarting
 
-```
+```bash
 launchctl unload ~/Library/LaunchAgents/dev.onorca.orca.plist
 launchctl load   ~/Library/LaunchAgents/dev.onorca.orca.plist
 ```
@@ -509,7 +515,7 @@ it.
 Dropping `HOMELAB_ORCA` on a later run does **not** stop an already-installed
 Orca service — `bootstrap.sh` only ever adds it. To stop and remove the service:
 
-```
+```bash
 launchctl unload ~/Library/LaunchAgents/dev.onorca.orca.plist
 rm ~/Library/LaunchAgents/dev.onorca.orca.plist
 ```

@@ -241,6 +241,8 @@ if [[ "${HOMELAB_ORCA:-0}" == "1" ]]; then
   elif ensure_orca_pairing_address; then
     orca_port="${HOMELAB_ORCA_PORT:-6768}"
     [[ "$orca_port" =~ ^[0-9]+$ ]] || fail "HOMELAB_ORCA_PORT must be a port number, got: $orca_port"
+    # 10# forces base-10 so a leading zero isn't parsed as octal.
+    (( 10#$orca_port >= 1 && 10#$orca_port <= 65535 )) || fail "HOMELAB_ORCA_PORT must be 1-65535, got: $orca_port"
     # Escape sed metacharacters (\, &, |) in the advertised address before
     # substitution — it may be a reverse-proxy URL, not just an IP (see
     # `orca serve --help`). Mirrors the OpenChamber password escaping above.
