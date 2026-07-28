@@ -18,6 +18,7 @@ echo "==> Unloading launchd jobs"
 for label in \
   dev.openchamber.opencode \
   dev.openchamber.openchamber \
+  dev.onorca.orca \
   com.nousresearch.hermes-gateway
 do
   plist="${LAUNCH_DIR}/${label}.plist"
@@ -32,6 +33,11 @@ echo "==> Uninstalling Homebrew casks"
 for cask in tailscale-app tailscale rustdesk; do
   brew uninstall --cask "$cask" 2>/dev/null && echo "    removed $cask" || true
 done
+# Orca is intentionally NOT uninstalled — it doubles as a standalone desktop ADE
+# you may rely on outside the homelab (this repo is often edited from inside it).
+# The launchd job above is already unloaded/removed; the app stays. Remove it
+# yourself if you really mean to: brew uninstall --cask orca
+echo "    left orca installed (run 'brew uninstall --cask orca' to remove the app)"
 
 echo "==> Removing OpenChamber / OpenCode / Hermes binaries"
 brew uninstall openchamber 2>/dev/null || true

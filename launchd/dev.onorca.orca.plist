@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.onorca.orca</string>
+
+  <!-- Orca's headless runtime server. `orca serve` starts and manages its own
+       fleet of coding agents (it does NOT connect to the OpenCode :4096
+       listener the way OpenChamber does). Opt-in: installed only when
+       HOMELAB_ORCA=1.
+
+       `orca serve` has no bind-host flag, so it binds 0.0.0.0:__ORCA_PORT__ —
+       reachable on ALL interfaces, including the local LAN, not just the
+       tailnet. The access control here is Orca's pairing (an E2EE device
+       credential), NOT a network firewall: an unpaired peer that reaches the
+       socket can't drive agents. Keep the Mac on your tailnet regardless.
+
+       --pairing-address is only the address advertised to pairing clients; it
+       does not change the bind address. bootstrap.sh substitutes the tailnet
+       IP (from $ORCA_PAIRING_ADDRESS or `tailscale ip -4`).
+
+       SECURITY: on start, serve prints a one-time pairing offer
+       (orca://pair?code=...) — a device credential with E2EE material — to the
+       StandardOutPath log below. Treat orca.log as a secret. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/orca</string>
+    <string>serve</string>
+    <string>--port</string>
+    <string>__ORCA_PORT__</string>
+    <string>--pairing-address</string>
+    <string>__ORCA_PAIRING_ADDRESS__</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>__HOME__</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <key>RunAtLoad</key>          <true/>
+  <key>KeepAlive</key>          <true/>
+  <key>ProcessType</key>        <string>Background</string>
+
+  <key>StandardOutPath</key>    <string>__HOME__/Library/Logs/homelab/orca.log</string>
+  <key>StandardErrorPath</key>  <string>__HOME__/Library/Logs/homelab/orca.err</string>
+</dict>
+</plist>
