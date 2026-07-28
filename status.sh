@@ -41,6 +41,7 @@ else
 fi
 check_cmd opencode
 check_cmd openchamber
+check_cmd orca
 check_cmd hermes
 check_cmd brew
 
@@ -52,11 +53,15 @@ echo
 echo "${BOLD}Ports${RST}"
 check_port 4096 "OpenCode"
 check_port 3000 "OpenChamber"
+# Orca is opt-in (HOMELAB_ORCA=1) — only report its port when the plist exists,
+# so a deliberately-disabled Orca doesn't show as a failure.
+[[ -f "$HOME/Library/LaunchAgents/dev.onorca.orca.plist" ]] && check_port 6768 "Orca"
 
 echo
 echo "${BOLD}launchd${RST}"
 check_launchd dev.openchamber.opencode
 check_launchd dev.openchamber.openchamber
+[[ -f "$HOME/Library/LaunchAgents/dev.onorca.orca.plist" ]] && check_launchd dev.onorca.orca
 check_launchd com.nousresearch.hermes-gateway
 
 echo

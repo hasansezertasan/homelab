@@ -18,6 +18,7 @@ echo "==> Unloading launchd jobs"
 for label in \
   dev.openchamber.opencode \
   dev.openchamber.openchamber \
+  dev.onorca.orca \
   com.nousresearch.hermes-gateway
 do
   plist="${LAUNCH_DIR}/${label}.plist"
@@ -29,7 +30,9 @@ do
 done
 
 echo "==> Uninstalling Homebrew casks"
-for cask in tailscale-app tailscale rustdesk; do
+# Orca app data (~/Library/Application Support/Orca) and any worktrees under
+# ~/orca are left intact — this only removes the app.
+for cask in tailscale-app tailscale rustdesk orca; do
   brew uninstall --cask "$cask" 2>/dev/null && echo "    removed $cask" || true
 done
 

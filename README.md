@@ -10,6 +10,7 @@ home server running:
 | AI agent    | [Hermes](https://github.com/NousResearch/hermes-agent)  | Talk to it from Telegram/Discord/Slack/Signal   |
 | Coding (cli)| [OpenCode](https://opencode.ai)                         | Headless AI coding agent on `:4096`             |
 | Coding (UI) | [OpenChamber](https://openchamber.dev)                  | Web/PWA frontend for OpenCode on `:3000`        |
+| Coding (UI) | [Orca](https://onorca.dev) *(opt-in alt to OpenChamber)*| Parallel-agent ADE; headless `orca serve` on `:6768` |
 | PaaS        | Dokploy *(deferred — Linux-only)*                       | See [Dokploy (later, via Lima)](#dokploy-later-via-lima) |
 
 > **Heads up about Dokploy.** It targets Ubuntu/Debian and won't run natively
@@ -45,8 +46,8 @@ Then:
 - Installs Homebrew (Apple Silicon, `/opt/homebrew`).
 - `brew bundle` against `./Brewfile` — formulae (`git`, `gh`, `mise`, `uv`,
   `node`, `bun`, `jq`, `ripgrep`, `fd`, `bat`, `zoxide`, `ctx7`, `opencode`,
-  `hermes-agent`) + casks (`tailscale-app`, `rustdesk`, `orbstack`). See
-  `Brewfile` for the canonical list.
+  `hermes-agent`) + casks (`tailscale-app`, `rustdesk`, `orbstack`, `orca`).
+  See `Brewfile` for the canonical list.
 - Registers Tailscale and RustDesk as macOS **Login Items** so the GUI apps
   relaunch on every reboot (visible/removable under System Settings → General
   → Login Items).
@@ -57,6 +58,10 @@ Then:
 - Prompts (once) for the OpenChamber UI password and stores it at
   `~/.config/homelab/openchamber.password` (mode 600) so re-runs stay
   non-interactive. Set `OPENCHAMBER_UI_PASSWORD` in the env to skip the prompt.
+- Optional: with `HOMELAB_ORCA=1`, drops a launchd plist that runs Orca's
+  headless runtime (`orca serve`) on `:6768` over the tailnet — a parallel-agent
+  alternative to OpenChamber. Off by default; OpenChamber stays the running
+  default. See [Orca](#orca-parallel-agent-ade).
 - Optional: with `HOMELAB_HEADLESS=1`, disables sleep and configures the Mac
   to wake on power and restart-after-freeze — closer to a real server. Display
   blanks after `HOMELAB_DISPLAYSLEEP` minutes (default `2`; set `0` to never
@@ -99,6 +104,7 @@ anything already installed and reloads the launchd jobs cleanly.
         │  Hermes     chat from Telegram/Discord/...    │
         │  OpenCode   :4096   (localhost only)          │
         │  OpenChamber :3000  (tailnet)                 │
+        │  Orca       :6768   (tailnet, opt-in)         │
         └───────────────────────────────────────────────┘
 ```
 
@@ -117,6 +123,7 @@ If you want HTTPS for the web UI, use `tailscale serve` — see [OpenCode + Open
 └── launchd/
     ├── dev.openchamber.opencode.plist
     ├── dev.openchamber.openchamber.plist
+    ├── dev.onorca.orca.plist                   (opt-in — HOMELAB_ORCA=1)
     └── com.nousresearch.hermes-gateway.plist   (opt-in)
 ```
 
@@ -395,6 +402,96 @@ tailscale serve --bg --https 443 http://localhost:3000
 
 That gives you `https://<machine>.tail-scale.ts.net` with a real cert,
 no Caddy or nginx needed.
+
+</details>
+
+### Orca (parallel-agent ADE)
+
+<details>
+<summary><strong>Opt-in headless runtime, tailnet pairing, mobile companion</strong></summary>
+
+[Orca](https://onorca.dev) is an ADE for driving a *fleet* of coding agents
+(Claude Code, Codex, OpenCode, …) in parallel, each in its own git worktree. It
+ships as a desktop app (installed by the `orca` cask in the `Brewfile`, which
+also puts the `orca` CLI at `/opt/homebrew/bin/orca`) and has a mobile companion
+app for watching agents from your phone.
+
+It's an **opt-in alternative to OpenChamber**, not a replacement — both stay
+installable, and OpenChamber remains the running default. The difference:
+
+- **OpenChamber** is a thin web/PWA UI over the *one* OpenCode listener on
+  `:4096` (see [OpenCode + OpenChamber](#opencode--openchamber)).
+- **Orca** brings its **own** agent runtime. `orca serve` does *not* connect to
+  the homelab's OpenCode `:4096` — it starts and manages its own agents. Run
+  both at once if you like; `:6768` and `:3000` don't collide.
+
+#### Enabling the headless runtime
+
+The `orca serve` launchd job is off by default. Turn it on:
+
+```bash
+HOMELAB_ORCA=1 ./bootstrap.sh
+```
+
+This installs `launchd/dev.onorca.orca.plist`, which runs:
+
+```
+orca serve --port 6768 --pairing-address <your-tailnet-ip>
+```
+
+The server binds `0.0.0.0:6768` (reachable across the tailnet; Tailscale ACLs
+are the firewall, same model as OpenChamber). `--pairing-address` is only the
+address *advertised to clients* — it does not change the bind address.
+
+**Pairing address resolution**, in order:
+
+1. `ORCA_PAIRING_ADDRESS=100.x.x.x` in the environment, if set.
+2. Otherwise `tailscale ip -4` (so **sign in to Tailscale first**).
+3. If neither is available the Orca step is skipped with a warning — the rest
+   of the bootstrap still succeeds. Re-run once Tailscale is up.
+
+Override the port with `HOMELAB_ORCA_PORT=...` (default `6768`).
+
+#### Pairing a device
+
+On start, `orca serve` prints a one-time **pairing offer** — an
+`orca://pair?code=...` link — to its log. Use it to connect a client:
+
+```bash
+# grab the latest offer from the launchd log
+grep -o 'orca://pair?[^ ]*' ~/Library/Logs/homelab/orca.log | tail -1
+
+# pair this machine's CLI (or another Mac) to the runtime
+orca environment add --name mac --pairing-code 'orca://pair?code=...'
+```
+
+For the **mobile companion app**, run `orca serve --mobile-pairing` in a
+terminal (stop the launchd job first so the port is free) to print a
+phone-scoped QR/link, then scan it in the app.
+
+> **Security.** A pairing offer is a device credential with E2EE material —
+> anyone who has it can drive your agents. `~/Library/Logs/homelab/orca.log`
+> contains it, so treat that log as a secret: don't paste it into shared
+> channels or proxy access logs. Rotate by restarting the service (below),
+> which mints a fresh offer.
+
+#### Logs
+
+```
+tail -f ~/Library/Logs/homelab/orca.log
+tail -f ~/Library/Logs/homelab/orca.err
+```
+
+#### Restarting
+
+```
+launchctl unload ~/Library/LaunchAgents/dev.onorca.orca.plist
+launchctl load   ~/Library/LaunchAgents/dev.onorca.orca.plist
+```
+
+Or `HOMELAB_ORCA=1 ./bootstrap.sh` again — it's idempotent. The desktop app
+itself auto-updates (Homebrew cask `auto_updates`), so `brew bundle` won't fight
+it.
 
 </details>
 

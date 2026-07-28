@@ -29,3 +29,11 @@ brew "hermes-agent"
 cask "tailscale-app"
 cask "rustdesk"
 cask "orbstack"
+
+# Orca — parallel-agent ADE, an opt-in alternative to OpenChamber. The cask
+# ships the desktop app AND the `orca` CLI at /opt/homebrew/bin/orca (so the
+# launchd plist resolves it without a shim). Installed unconditionally like
+# orbstack; the headless `orca serve` launchd job is opt-in via HOMELAB_ORCA=1
+# in bootstrap.sh. Cask auto-updates itself, so `brew bundle --no-upgrade`
+# won't fight the app's own updater.
+cask "stablyai/orca/orca"

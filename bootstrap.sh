@@ -196,6 +196,55 @@ unset esc_pw
 # Uncomment to auto-start the messaging gateway:
 # install_plist "com.nousresearch.hermes-gateway"
 
+# ---------- 5b. Orca headless runtime (opt-in alternative to OpenChamber) ----------
+# The `orca` cask (Brewfile) ships the desktop app plus the `orca` CLI. Its
+# headless runtime (`orca serve`) is an opt-in alternative to OpenChamber,
+# enabled with HOMELAB_ORCA=1. Unlike OpenChamber it does not proxy the OpenCode
+# :4096 listener — it starts and manages its own fleet of agents.
+
+# Resolve the tailnet IPv4 to advertise to Orca pairing clients. Sets
+# ORCA_PAIRING_ADDRESS. Returns non-zero (caller skips) if none can be found —
+# the Tailscale CLI isn't on PATH until the GUI app registers it, so fall back
+# to the bundled binary inside Tailscale.app.
+ensure_orca_pairing_address() {
+  if [[ -n "${ORCA_PAIRING_ADDRESS:-}" ]]; then
+    ok "Orca pairing address from \$ORCA_PAIRING_ADDRESS: $ORCA_PAIRING_ADDRESS"
+    return 0
+  fi
+
+  local ts=""
+  if command -v tailscale &>/dev/null; then
+    ts="tailscale"
+  elif [[ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]; then
+    ts="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
+  fi
+
+  [[ -n "$ts" ]] && ORCA_PAIRING_ADDRESS="$("$ts" ip -4 2>/dev/null | head -1)"
+
+  if [[ -z "${ORCA_PAIRING_ADDRESS:-}" ]]; then
+    warn "Orca: can't resolve tailnet IP (sign in to Tailscale first, or set \$ORCA_PAIRING_ADDRESS) — skipping orca serve"
+    return 1
+  fi
+  ok "Orca pairing address (tailscale ip -4): $ORCA_PAIRING_ADDRESS"
+  return 0
+}
+
+step "Orca headless runtime (opt-in)"
+if [[ "${HOMELAB_ORCA:-0}" == "1" ]]; then
+  if [[ ! -x /opt/homebrew/bin/orca ]]; then
+    warn "orca CLI not at /opt/homebrew/bin/orca (Brewfile cask should provide it) — skipping orca serve"
+  elif ensure_orca_pairing_address; then
+    orca_port="${HOMELAB_ORCA_PORT:-6768}"
+    [[ "$orca_port" =~ ^[0-9]+$ ]] || fail "HOMELAB_ORCA_PORT must be a port number, got: $orca_port"
+    install_plist "dev.onorca.orca" \
+      -e "s|__ORCA_PORT__|${orca_port}|g" \
+      -e "s|__ORCA_PAIRING_ADDRESS__|${ORCA_PAIRING_ADDRESS}|g"
+    ok "orca serve on :${orca_port} — pairing offer prints to ~/Library/Logs/homelab/orca.log (treat as a secret)"
+  fi
+else
+  skip "set HOMELAB_ORCA=1 to run Orca headless (orca serve) as an alternative to OpenChamber"
+fi
+
 # ---------- 6. headless-server polish (optional but recommended) ----------
 step "Headless server tweaks"
 if [[ "${HOMELAB_HEADLESS:-0}" == "1" ]]; then
