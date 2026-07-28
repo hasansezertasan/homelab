@@ -439,9 +439,20 @@ This installs `launchd/dev.onorca.orca.plist`, which runs:
 orca serve --port 6768 --pairing-address <your-tailnet-ip>
 ```
 
-The server binds `0.0.0.0:6768` (reachable across the tailnet; Tailscale ACLs
-are the firewall, same model as OpenChamber). `--pairing-address` is only the
-address *advertised to clients* — it does not change the bind address.
+The server binds `0.0.0.0:6768`. Note `orca serve` has **no bind-host flag**, so
+unlike the OpenChamber plist you can't pin it to the tailnet interface — on a
+non-tailnet network the port is reachable by the local LAN too. The real access
+control here is Orca's **pairing**: a client can't drive agents without a paired
+E2EE credential (see below), so an unpaired peer that merely reaches the socket
+can't do anything. Keep the Mac on your tailnet and treat pairing offers as
+secrets. `--pairing-address` is only the address *advertised to clients* — it
+does not change the bind address.
+
+> **Needs a logged-in GUI session.** `orca serve` is an Electron process run as
+> a launchd *LaunchAgent*, so it only runs while you're logged into the Mac's
+> GUI session — same as the OpenChamber/OpenCode agents, but Orca is heavier. A
+> truly headless Mac with no auto-login won't start it; enable auto-login or
+> keep a GUI session active.
 
 **Pairing address resolution**, in order:
 
@@ -492,6 +503,20 @@ launchctl load   ~/Library/LaunchAgents/dev.onorca.orca.plist
 Or `HOMELAB_ORCA=1 ./bootstrap.sh` again — it's idempotent. The desktop app
 itself auto-updates (Homebrew cask `auto_updates`), so `brew bundle` won't fight
 it.
+
+#### Disabling
+
+Dropping `HOMELAB_ORCA` on a later run does **not** stop an already-installed
+Orca service — `bootstrap.sh` only ever adds it. To stop and remove the service:
+
+```
+launchctl unload ~/Library/LaunchAgents/dev.onorca.orca.plist
+rm ~/Library/LaunchAgents/dev.onorca.orca.plist
+```
+
+`teardown.sh` does the same unload+remove. Either way the Orca **app** is left
+installed (it doubles as a standalone ADE) — remove it with
+`brew uninstall --cask orca` if you want it gone.
 
 </details>
 

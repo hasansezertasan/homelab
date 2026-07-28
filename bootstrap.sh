@@ -219,7 +219,12 @@ ensure_orca_pairing_address() {
     ts="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
   fi
 
-  [[ -n "$ts" ]] && ORCA_PAIRING_ADDRESS="$("$ts" ip -4 2>/dev/null | head -1)"
+  if [[ -n "$ts" ]]; then
+    # `|| true`: a signed-out tailscale exits non-zero (and pipefail propagates
+    # it), which would abort the script if this fn were ever called outside an
+    # if/elif condition. Stay robust regardless of call site.
+    ORCA_PAIRING_ADDRESS="$("$ts" ip -4 2>/dev/null | head -1)" || true
+  fi
 
   if [[ -z "${ORCA_PAIRING_ADDRESS:-}" ]]; then
     warn "Orca: can't resolve tailnet IP (sign in to Tailscale first, or set \$ORCA_PAIRING_ADDRESS) — skipping orca serve"
@@ -236,9 +241,14 @@ if [[ "${HOMELAB_ORCA:-0}" == "1" ]]; then
   elif ensure_orca_pairing_address; then
     orca_port="${HOMELAB_ORCA_PORT:-6768}"
     [[ "$orca_port" =~ ^[0-9]+$ ]] || fail "HOMELAB_ORCA_PORT must be a port number, got: $orca_port"
+    # Escape sed metacharacters (\, &, |) in the advertised address before
+    # substitution — it may be a reverse-proxy URL, not just an IP (see
+    # `orca serve --help`). Mirrors the OpenChamber password escaping above.
+    esc_addr=$(printf '%s' "$ORCA_PAIRING_ADDRESS" | sed -e 's/[\\&|]/\\&/g')
     install_plist "dev.onorca.orca" \
       -e "s|__ORCA_PORT__|${orca_port}|g" \
-      -e "s|__ORCA_PAIRING_ADDRESS__|${ORCA_PAIRING_ADDRESS}|g"
+      -e "s|__ORCA_PAIRING_ADDRESS__|${esc_addr}|g"
+    unset esc_addr
     ok "orca serve on :${orca_port} — pairing offer prints to ~/Library/Logs/homelab/orca.log (treat as a secret)"
   fi
 else

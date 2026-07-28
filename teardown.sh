@@ -30,11 +30,14 @@ do
 done
 
 echo "==> Uninstalling Homebrew casks"
-# Orca app data (~/Library/Application Support/Orca) and any worktrees under
-# ~/orca are left intact — this only removes the app.
-for cask in tailscale-app tailscale rustdesk orca; do
+for cask in tailscale-app tailscale rustdesk; do
   brew uninstall --cask "$cask" 2>/dev/null && echo "    removed $cask" || true
 done
+# Orca is intentionally NOT uninstalled — it doubles as a standalone desktop ADE
+# you may rely on outside the homelab (this repo is often edited from inside it).
+# The launchd job above is already unloaded/removed; the app stays. Remove it
+# yourself if you really mean to: brew uninstall --cask orca
+echo "    left orca installed (run 'brew uninstall --cask orca' to remove the app)"
 
 echo "==> Removing OpenChamber / OpenCode / Hermes binaries"
 brew uninstall openchamber 2>/dev/null || true
