@@ -71,7 +71,6 @@ echo "${BOLD}launchd${RST}"
 check_launchd dev.openchamber.opencode
 check_launchd dev.openchamber.openchamber
 [[ -f "$HOME/Library/LaunchAgents/dev.onorca.orca.plist" ]] && check_launchd dev.onorca.orca
-check_launchd com.nousresearch.hermes-gateway
 
 echo
 echo "${BOLD}Tailscale${RST}"

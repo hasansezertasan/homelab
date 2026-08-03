@@ -192,9 +192,9 @@ esc_pw=$(printf '%s' "$OPENCHAMBER_UI_PASSWORD" | sed -e 's/[\\&|]/\\&/g')
 install_plist "dev.openchamber.openchamber" -e "s|__OPENCHAMBER_UI_PASSWORD__|${esc_pw}|g"
 unset esc_pw
 
-# Hermes runs interactively from the CLI/gateway by default; no plist by default.
-# Uncomment to auto-start the messaging gateway:
-# install_plist "com.nousresearch.hermes-gateway"
+# Hermes has no launchd job — you launch it on demand via `hermes desktop`
+# (Electron app) or `hermes dashboard` (web UI on 127.0.0.1:9119), or the
+# `hermes` terminal TUI. See README §Hermes Agent.
 
 # ---------- 5b. Orca headless runtime (opt-in alternative to OpenChamber) ----------
 # The `orca` cask (Brewfile) ships the desktop app plus the `orca` CLI. Its
@@ -309,7 +309,8 @@ ${GRN}${BOLD}Done.${RST} Next steps:
   ${BOLD}1.${RST} Open Tailscale.app and sign in. Note your machine's 100.x.x.x address.
   ${BOLD}2.${RST} Open RustDesk → Settings → Security → enable ${BOLD}Direct IP Access${RST}
      and set a permanent password. (See README §RustDesk over Tailscale)
-  ${BOLD}3.${RST} Run ${BOLD}hermes setup${RST} to pick a model provider and configure gateways.
+  ${BOLD}3.${RST} Run ${BOLD}hermes setup${RST} to pick a model provider, then launch
+     ${BOLD}hermes desktop${RST} or ${BOLD}hermes dashboard${RST} (web UI on 127.0.0.1:9119).
   ${BOLD}4.${RST} OpenChamber is running on ${BOLD}http://localhost:3000${RST}
      (or http://<tailscale-ip>:3000 from anywhere on your tailnet).
   ${BOLD}5.${RST} For headless Mac mode: re-run with ${BOLD}HOMELAB_HEADLESS=1 ./bootstrap.sh${RST}

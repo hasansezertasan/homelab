@@ -26,7 +26,7 @@ No linter, no test suite. Validate shell edits with `bash -n bootstrap.sh` and `
 - `bootstrap.sh` — single installer. Sections numbered 0-6: Xcode CLT → Homebrew → `brew bundle` (Brewfile: CLI tools, agents, Tailscale, RustDesk, OrbStack) → GUI Login Items (Tailscale, RustDesk) → OpenChamber → launchd → optional headless tweaks. Uses `step/ok/skip/warn/fail` helpers for output. `set -euo pipefail`.
 - `Brewfile` — single source of truth for brew formulae + casks. Add new tools here, not as new bootstrap.sh sections.
 - `install.sh` — remote bootstrap. Installs Xcode CLT, clones repo to `~/homelab`, execs `bootstrap.sh`.
-- `launchd/*.plist` — templates with `__HOME__` placeholder. `install_plist()` substitutes via `sed`, writes to `~/Library/LaunchAgents/`, then `launchctl unload || true` + `launchctl load` for clean reload. Hermes plist exists but is commented out (opt-in).
+- `launchd/*.plist` — templates with `__HOME__` placeholder. `install_plist()` substitutes via `sed`, writes to `~/Library/LaunchAgents/`, then `launchctl unload || true` + `launchctl load` for clean reload. Hermes has no launchd job — it runs on demand via `hermes desktop` / `hermes dashboard` / `hermes` TUI.
 - `mise.toml` — per-project runtime pins for agents using `mise`.
 - `status.sh` / `teardown.sh` — companions to bootstrap.
 
@@ -35,7 +35,7 @@ No linter, no test suite. Validate shell edits with `bash -n bootstrap.sh` and `
 - **`bootstrap.sh` MUST stay idempotent.** Every install step guards with `command -v` / `[[ -d /Applications/X.app ]]` before installing. Every launchd reload uses `unload ... || true` then `load`. New steps must follow this pattern — never assume clean state, never error on re-run.
 - Apple Silicon only (`/opt/homebrew`). Script warns but proceeds on non-arm64.
 - Never `sudo` the whole script — `bootstrap.sh` refuses `EUID==0` and calls `sudo` only inside the headless section.
-- Installer URLs (`curl | bash`) are pinned to upstream `main` for OpenCode / OpenChamber / Hermes — changing these is a supply-chain decision, flag it.
+- OpenChamber installs via `curl | bash` pinned to upstream `main` — changing that URL is a supply-chain decision, flag it. OpenCode and Hermes come from Homebrew (`opencode`, `hermes-agent` in the Brewfile), not `curl | bash`.
 - Plists use `__HOME__` placeholder, never hard-coded paths. New plists must follow.
 - Secrets/passwords never live in repo templates. Plists use `__PLACEHOLDER__` tokens (e.g. `__OPENCHAMBER_UI_PASSWORD__`); `install_plist` substitutes at install time from values prompted on first run and stored under `~/.config/homelab/` (mode 600). Subsequent runs reuse stored values for idempotency. `$VARNAME` env-var overrides are supported for non-interactive bootstrap.
 

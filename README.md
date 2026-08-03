@@ -7,7 +7,7 @@ home server running:
 | ----------- | ------------------------------------------------------- | ----------------------------------------------- |
 | Network     | [Tailscale](https://tailscale.com)                      | Mesh VPN — the only thing reachable from afar   |
 | Remote GUI  | [RustDesk](https://rustdesk.com)                        | Desktop access over the tailnet, no relay needed|
-| AI agent    | [Hermes](https://github.com/NousResearch/hermes-agent)  | Talk to it from Telegram/Discord/Slack/Signal   |
+| AI agent    | [Hermes](https://github.com/NousResearch/hermes-agent)  | Web dashboard, desktop app, or terminal TUI     |
 | Coding (cli)| [OpenCode](https://opencode.ai)                         | Headless AI coding agent on `:4096`             |
 | Coding (UI) | [OpenChamber](https://openchamber.dev)                  | Web/PWA frontend for OpenCode on `:3000`        |
 | Coding (UI) | [Orca](https://onorca.dev) *(opt-in alt to OpenChamber)*| Parallel-agent ADE; headless `orca serve` on `:6768` |
@@ -32,7 +32,8 @@ Then:
    - GUI: open Tailscale.app, click "Log in".
    - Headless / phone-driven: run `tailscale login --qr` in Terminal and scan the printed QR with your phone — no browser on the Mac needed.
 2. Open **RustDesk** → enable Direct IP Access (see [RustDesk over Tailscale](#rustdesk-over-tailscale)).
-3. Run `hermes setup` to pick a model + configure platforms.
+3. Run `hermes setup` to pick a model provider, then use `hermes desktop`
+   (Electron app) or `hermes dashboard` (web UI on `127.0.0.1:9119`).
 4. **OpenChamber UI password** — `bootstrap.sh` prompts for it the first
    time and stores it at `~/.config/homelab/openchamber.password` (mode 600).
    Subsequent runs reuse the stored value, so the script stays idempotent.
@@ -53,8 +54,8 @@ Then:
   → Login Items).
 - `curl | bash` (official installer): OpenChamber.
 - Drops two launchd plists in `~/Library/LaunchAgents/` so OpenCode and
-  OpenChamber auto-start on boot. (Hermes gateway plist ships in the repo
-  but is opt-in — uncomment one line in `bootstrap.sh` to enable.)
+  OpenChamber auto-start on boot. (Hermes has no launchd job — you launch it
+  on demand via `hermes desktop` or `hermes dashboard`.)
 - Prompts (once) for the OpenChamber UI password and stores it at
   `~/.config/homelab/openchamber.password` (mode 600) so re-runs stay
   non-interactive. Set `OPENCHAMBER_UI_PASSWORD` in the env to skip the prompt.
@@ -101,7 +102,7 @@ anything already installed and reloads the launchd jobs cleanly.
         │             MacBook M1 Pro (home)             │
         │  Tailscale  identity + reachability           │
         │  RustDesk   desktop @ 100.x.x.x               │
-        │  Hermes     chat from Telegram/Discord/...    │
+        │  Hermes     dashboard :9119 / desktop app    │
         │  OpenCode   :4096   (localhost only)          │
         │  OpenChamber :3000  (tailnet)                 │
         │  Orca       :6768   (tailnet, opt-in)         │
@@ -123,8 +124,7 @@ If you want HTTPS for the web UI, use `tailscale serve` — see [OpenCode + Open
 └── launchd/
     ├── dev.openchamber.opencode.plist
     ├── dev.openchamber.openchamber.plist
-    ├── dev.onorca.orca.plist                   (opt-in — HOMELAB_ORCA=1)
-    └── com.nousresearch.hermes-gateway.plist   (opt-in)
+    └── dev.onorca.orca.plist                   (opt-in — HOMELAB_ORCA=1)
 ```
 
 Per-tool setup guides live inline at the bottom of this README — see
@@ -180,9 +180,9 @@ server" problem, and they compose without fighting each other:
   recommend exactly this combo — direct IP access, no RustDesk relay.
 - **OpenCode + OpenChamber** turn the Mac into "coding agent from your
   phone." OpenChamber is explicitly built to expose OpenCode over a VPN.
-- **Hermes** is the brain that lives on the box — talk to it from anywhere
-  via the messaging gateway, and it remembers across sessions thanks to
-  the Honcho-backed memory loop.
+- **Hermes** is the brain that lives on the box — drive it from its web
+  dashboard or desktop app (or the terminal TUI), and it remembers across
+  sessions thanks to the Honcho-backed memory loop.
 - **Dokploy** (later) becomes the place to drop random Docker apps. Inside
   a Lima VM, you can blow it away and restart without touching the Mac.
 
@@ -529,11 +529,15 @@ installed (it doubles as a standalone ADE) — remove it with
 ### Hermes Agent (Nous Research)
 
 <details>
-<summary><strong>Gateway setup, enabling auto-start</strong></summary>
+<summary><strong>Dashboard, desktop app, terminal TUI</strong></summary>
 
-The killer feature here for a home server: Hermes has a **messaging gateway**
-that lets you talk to the agent from Telegram, Discord, Slack, WhatsApp, or
-Signal. The Mac runs the agent; you talk to it from your phone, anywhere.
+Hermes is the agent that lives on the box. Three ways to drive it, all local
+to the Mac (reach the GUI from afar via RustDesk over the tailnet):
+
+- `hermes` — interactive TUI in your terminal
+- `hermes desktop` — Electron desktop app
+- `hermes dashboard` — web UI on `127.0.0.1:9119` (manage config, API keys,
+  sessions)
 
 #### First run
 
@@ -546,33 +550,27 @@ This walks you through:
 - Configuring tools
 - Optionally migrating from OpenClaw
 
-Then either:
-- `hermes` — interactive TUI in your terminal
-- `hermes gateway setup && hermes gateway start` — messaging mode
+Then launch whichever surface you prefer:
 
-#### Enabling the gateway as a launchd service
+```
+hermes desktop          # Electron app
+hermes dashboard        # web UI on 127.0.0.1:9119
+hermes dashboard --status   # list / --stop to stop running web servers
+```
 
-By default `bootstrap.sh` does **not** auto-start the gateway, because you need
-to add platform credentials first. Once you've done `hermes gateway setup` and
-added at least one platform (Telegram is easiest):
+#### Why local-only
 
-1. Edit `bootstrap.sh` and uncomment this line near the bottom:
-   ```bash
-   # install_plist "com.nousresearch.hermes-gateway"
-   ```
-2. Re-run `./bootstrap.sh`. The gateway now starts on boot.
+`hermes dashboard` binds `127.0.0.1` by default. The old `--insecure` flag is
+a **no-op** as of the June 2026 hardening — a non-loopback bind now *requires*
+an auth provider (password or OAuth), so exposing it raw over the tailnet isn't
+possible anyway. Keep the dashboard on loopback and reach it through the
+RustDesk desktop session; that's the simplest secure story and needs no
+launchd job.
 
-#### Why this pairs well with Tailscale
-
-The gateway connects *outbound* to Telegram/Discord/etc., so it doesn't need
-inbound network access. You don't even need port forwarding — the agent
-running on your Mac can be reached from anywhere just by messaging the bot.
-
-Tailscale matters here for two reasons:
-1. **Browser dashboard.** Hermes ships a web UI on `:8080` you can pin to the
-   tailnet IP.
-2. **SSH backend.** If you set `hermes config terminal_backend ssh`, the
-   agent can run commands inside *other* tailnet machines, not just the Mac.
+> If you later want the dashboard reachable from other tailnet devices'
+> browsers, register an auth provider first (`hermes dashboard register` wires
+> up Nous Portal OAuth) and bind to `0.0.0.0`, or front loopback with
+> `tailscale serve`.
 
 #### Logs
 

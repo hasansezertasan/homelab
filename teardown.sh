@@ -18,8 +18,7 @@ echo "==> Unloading launchd jobs"
 for label in \
   dev.openchamber.opencode \
   dev.openchamber.openchamber \
-  dev.onorca.orca \
-  com.nousresearch.hermes-gateway
+  dev.onorca.orca
 do
   plist="${LAUNCH_DIR}/${label}.plist"
   if [[ -f "$plist" ]]; then
