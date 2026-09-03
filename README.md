@@ -3,15 +3,15 @@
 One-shot bootstrap for turning a clean Apple Silicon MacBook into a personal
 home server running:
 
-| Layer       | Tool                                                    | Purpose                                         |
-| ----------- | ------------------------------------------------------- | ----------------------------------------------- |
-| Network     | [Tailscale](https://tailscale.com)                      | Mesh VPN — the only thing reachable from afar   |
-| Remote GUI  | [RustDesk](https://rustdesk.com)                        | Desktop access over the tailnet, no relay needed|
-| AI agent    | [Hermes](https://github.com/NousResearch/hermes-agent)  | Web dashboard, desktop app, or terminal TUI     |
-| Coding (cli)| [OpenCode](https://opencode.ai)                         | Headless AI coding agent on `:4096`             |
-| Coding (UI) | [OpenChamber](https://openchamber.dev)                  | Web/PWA frontend for OpenCode on `:3000`        |
-| Coding (UI) | [Orca](https://onorca.dev) *(opt-in alt to OpenChamber)*| Parallel-agent ADE; headless `orca serve` on `:6768` |
-| PaaS        | Dokploy *(deferred — Linux-only)*                       | See [Dokploy (later, via Lima)](#dokploy-later-via-lima) |
+| Layer | Tool | Purpose |
+| --- | --- | --- |
+| Network | [Tailscale](https://tailscale.com) | Mesh VPN—the only thing reachable from afar |
+| Remote GUI | [RustDesk](https://rustdesk.com) | Desktop over the tailnet, with no relay needed |
+| AI agent | [Hermes](https://github.com/NousResearch/hermes-agent) | Web dashboard, desktop app, or terminal chat |
+| Coding (CLI) | [OpenCode](https://opencode.ai) | Headless AI coding agent on `:4096` |
+| Coding (UI) | [OpenChamber](https://openchamber.dev) | Web/PWA frontend for OpenCode on `:3000` |
+| Coding (UI) | [Orca](https://onorca.dev) *(opt-in)* | Parallel-agent ADE; headless server on `:6768` |
+| PaaS | Dokploy *(deferred—Linux only)* | See [Dokploy (later, via Lima)](#dokploy-later-via-lima) |
 
 > **Heads up about Dokploy.** It targets Ubuntu/Debian and won't run natively
 > on macOS. This bootstrap installs the other five. When you're ready, add
@@ -30,7 +30,8 @@ Then:
 
 1. Sign in to **Tailscale**:
    - GUI: open Tailscale.app, click "Log in".
-   - Headless / phone-driven: run `tailscale login --qr` in Terminal and scan the printed QR with your phone — no browser on the Mac needed.
+   - Headless / phone-driven: run `tailscale login --qr` in Terminal and scan
+     the printed QR with your phone—no browser on the Mac needed.
 2. Open **RustDesk** → enable Direct IP Access (see [RustDesk over Tailscale](#rustdesk-over-tailscale)).
 3. Run `hermes setup` to pick a model provider, then use `hermes desktop`
    (Electron app) or `hermes dashboard` (web UI on `127.0.0.1:9119`).
@@ -67,6 +68,9 @@ Then:
   to wake on power and restart-after-freeze — closer to a real server. Display
   blanks after `HOMELAB_DISPLAYSLEEP` minutes (default `2`; set `0` to never
   blank).
+- Optional: with `HOMELAB_DEBLOAT=1`, captures the current macOS settings and
+  conservatively disables Spotlight indexing, Photos analysis, motion, and
+  transparency. `teardown.sh` restores the captured effective state.
 - Installs Claude Code skill packs via `npx skills add` — currently
   [`obra/superpowers`](https://github.com/obra/superpowers). Edit the
   `SKILL_PACKS` array in `bootstrap.sh` §7 to add more.
@@ -76,24 +80,24 @@ anything already installed and reloads the launchd jobs cleanly.
 
 ### Why these CLI tools
 
-| Tool       | Reason                                                                 |
-| ---------- | ---------------------------------------------------------------------- |
-| `git`      | Agents read history, branch, and commit. Non-negotiable.               |
-| `gh`       | Agents open PRs, read issues, and check CI. Auth via keychain.         |
-| `mise`     | Per-project Node/Python/Go versions without sudo. `mise.toml` aware.   |
-| `uv`       | Default Python tool — fast venvs, installs, lockfiles.                 |
-| `bun`      | Default JS/TS tool — runtime + package manager in one binary.          |
-| `jq`       | Agents pipe JSON constantly (API responses, configs, logs).            |
-| `ripgrep`  | Fast code search — every agent's first move into an unfamiliar repo.   |
-| `fd`       | Fast file finder — `find` ergonomics without `find` syntax.            |
-| `bat`      | Syntax-highlighted `cat` for human eyes during RustDesk sessions.      |
-| `zoxide`   | Smarter `cd` — jump to frecent dirs. Add `eval "$(zoxide init zsh)"` to `~/.zshrc`. |
-| `ctx7`     | Context7 CLI — pull up-to-date library docs into agents and the shell. |
-| OrbStack   | Docker engine on Apple Silicon — lighter than Docker Desktop, free.    |
+| Tool | Reason |
+| --- | --- |
+| `git` | Agents read history, branch, and commit. Non-negotiable. |
+| `gh` | Agents open PRs, read issues, and check CI. Auth via keychain. |
+| `mise` | Per-project Node/Python/Go versions without sudo. `mise.toml` aware. |
+| `uv` | Default Python tool—fast venvs, installs, and lockfiles. |
+| `bun` | Default JS/TS tool—runtime and package manager in one binary. |
+| `jq` | Agents constantly pipe JSON responses, configs, and logs. |
+| `ripgrep` | Fast code search—an agent's first move in an unfamiliar repo. |
+| `fd` | Fast file finder—`find` ergonomics without `find` syntax. |
+| `bat` | Syntax-highlighted `cat` for human eyes during RustDesk sessions. |
+| `zoxide` | Smarter `cd`; add `eval "$(zoxide init zsh)"` to `~/.zshrc`. |
+| `ctx7` | Pull current library documentation into agents and the shell. |
+| OrbStack | Docker engine on Apple Silicon—lighter than Docker Desktop. |
 
 ## The resulting architecture
 
-```
+```text
         ┌───────────── your phone / laptop ─────────────┐
         │  Tailscale client ─→  100.x.x.x mesh          │
         └──────────────────┬────────────────────────────┘
@@ -114,10 +118,11 @@ If you want HTTPS for the web UI, use `tailscale serve` — see [OpenCode + Open
 
 ## Repo layout
 
-```
+```text
 .
 ├── bootstrap.sh             # main installer — start here
 ├── install.sh               # remote curl|bash bootstrap (clones repo + runs bootstrap.sh)
+├── debloat-mac.sh           # opt-in, reversible macOS resource tuning
 ├── teardown.sh              # reverse it (keeps data dirs)
 ├── status.sh                # health check: binaries, ports, launchd, tailscale
 ├── mise.toml                # per-project runtime pins
@@ -149,6 +154,79 @@ auto-restart-after-freeze. You'll also want, in System Settings:
 - General → Sharing → enable Screen Sharing (a fallback to RustDesk).
 - Energy → "Prevent automatic sleeping when display is off".
 
+## Dedicated Mac resource tuning
+
+If this account is dedicated to the homelab and does not use Photos, enable the
+conservative tuning profile separately from headless mode:
+
+```bash
+HOMELAB_DEBLOAT=1 ./bootstrap.sh
+```
+
+[`debloat-mac.sh`](debloat-mac.sh) captures the effective state before its first
+change under `~/.config/homelab/debloat/` (mode 700), marking the directory as
+its own, then:
+
+- disables Spotlight indexing on the startup volume—agents use `rg` and `fd`;
+- disables the current user's `photoanalysisd` LaunchAgent; and
+- enables Reduce Motion and Reduce Transparency.
+
+The profile is opt-in because Spotlight and Photos may still be useful on a Mac
+that doubles as a normal workstation. It does not trim arbitrary Login Items;
+Tailscale and RustDesk plus the OpenCode, OpenChamber, and Orca LaunchAgents are
+intentional parts of this setup.
+
+Run the helper directly to inspect or reverse it:
+
+```bash
+./debloat-mac.sh status
+./debloat-mac.sh undo
+```
+
+Re-running `apply` preserves the original snapshot. `undo` restores the saved
+Spotlight and accessibility values and the previous effective Photos-analysis
+state; it never guesses if no snapshot exists, and it only restores a snapshot
+this repo captured. `teardown.sh` calls this rollback automatically when it
+finds one. Reduce Motion/Transparency changes may require Terminal Full Disk
+Access and a logout before macOS reflects them.
+
+### Diagnose `syspolicyd` before changing security policy
+
+Subprocess-heavy agent workloads can coincide with Gatekeeper assessments when
+they download, create, or rebuild executables. Assessments for unchanged code
+may be cached, so raw process count alone does not prove that `syspolicyd` is
+the bottleneck. Measure it while the workload is slow:
+
+```bash
+top -l 0 -stats pid,cpu,command | grep -i syspolicyd     # Ctrl-C to stop
+sudo fs_usage -w -f exec 2>/dev/null | grep -i syspolicy # activity, not CPU
+```
+
+This repo deliberately does **not** automate Gatekeeper, quarantine, or SIP
+changes:
+
+- `spctl developer-mode enable-terminal` grants Developer Tools permission to
+  a local terminal app; the normal SSH and LaunchAgent paths here are not that
+  app's children, so it is not a general homelab fix.
+- Removing `com.apple.quarantine` is irreversible. If measurement points there,
+  remove it only from a specific reviewed checkout—never a broad work tree.
+- Disabling Gatekeeper or SIP weakens a meaningful boundary on a machine that
+  remains reachable over Tailscale and runs persistent services. It is not a
+  resource-tuning default.
+
+Background and rationale: [`codex-controls-mac` issue #3](https://github.com/hasansezertasan/codex-controls-mac/issues/3)
+and its merged [debloat helper PR](https://github.com/hasansezertasan/codex-controls-mac/pull/5).
+
+### Put genuinely headless work in OrbStack
+
+For builds and tests that do not need macOS GUI automation, the OrbStack runtime
+already installed by this repo can run the workload in Linux. Only processes
+actually launched inside the container avoid macOS host execution; OpenCode or
+Orca commands still run on the host unless the agent is explicitly configured
+to execute them in that container. Keep RustDesk/browser/computer-use work on
+bare macOS and containerize the headless portion when the extra boundary is
+worth the workflow cost.
+
 ## Health check
 
 ```bash
@@ -164,9 +242,9 @@ launchd jobs are loaded, and a one-line Tailscale status.
 ./teardown.sh
 ```
 
-Removes the installed apps and unloads the launchd jobs. **Keeps data dirs**
-(`~/.opencode/`, `~/.hermes/`, etc.) — delete those manually if you want a
-truly clean slate.
+Restores a captured resource-tuning snapshot, removes the installed apps, and
+unloads the launchd jobs. **Keeps application data dirs** (`~/.opencode/`,
+`~/.hermes/`, etc.) — delete those manually if you want a truly clean slate.
 
 ## Why these tools together?
 
@@ -328,7 +406,7 @@ That's it. The session is double-encrypted: WireGuard underneath, RustDesk on to
 OpenCode is the headless AI coding agent. OpenChamber is the web/PWA UI that
 talks to it. The bootstrap runs them as two separate launchd services:
 
-```
+```text
 ┌────────────────────────────────────────────────────────────┐
 │  127.0.0.1:4096   opencode serve            (localhost)    │
 │         ▲                                                  │
@@ -369,20 +447,21 @@ The two services share no config file. The coupling lives in
 #### Accessing from the phone
 
 The PWA install flow works well on iOS/Android:
+
 - Visit `http://<mac-tailscale-ip>:3000`
 - Tap Share → "Add to Home Screen"
 - It becomes an app icon with notifications and keyboard-safe layout
 
 #### Logs
 
-```
+```bash
 tail -f ~/Library/Logs/homelab/opencode.log
 tail -f ~/Library/Logs/homelab/openchamber.log
 ```
 
 #### Restarting after an update
 
-```
+```bash
 launchctl unload ~/Library/LaunchAgents/dev.openchamber.opencode.plist
 launchctl unload ~/Library/LaunchAgents/dev.openchamber.openchamber.plist
 launchctl load   ~/Library/LaunchAgents/dev.openchamber.opencode.plist
@@ -396,7 +475,7 @@ Or just `./bootstrap.sh` again — it's idempotent.
 If you want `https://` instead of plain HTTP over the tailnet, the easiest
 path is **Tailscale Serve**:
 
-```
+```bash
 tailscale serve --bg --https 443 http://localhost:3000
 ```
 
@@ -542,18 +621,19 @@ to the Mac (reach the GUI from afar via RustDesk over the tailnet):
 
 #### First run
 
-```
+```bash
 hermes setup
 ```
 
 This walks you through:
+
 - Picking a model provider (Nous Portal, OpenRouter, Anthropic, OpenAI, ...)
 - Configuring tools
 - Optionally migrating from OpenClaw
 
 Then launch whichever surface you prefer:
 
-```
+```bash
 hermes desktop          # Electron app
 hermes dashboard        # web UI on 127.0.0.1:9119
 hermes dashboard --status   # list / --stop to stop running web servers
@@ -576,7 +656,7 @@ launchd job.
 
 #### Logs
 
-```
+```bash
 tail -f ~/.hermes/logs/hermes.log
 ```
 
@@ -594,13 +674,13 @@ your home directory by default.
 
 #### Install Lima
 
-```
+```bash
 brew install lima
 ```
 
 #### Start an Ubuntu 22.04 VM
 
-```
+```bash
 limactl start --name=dokploy template://ubuntu-lts \
   --cpus=4 --memory=8 --disk=60
 ```
@@ -609,7 +689,7 @@ limactl start --name=dokploy template://ubuntu-lts \
 
 #### Inside the VM — install Dokploy
 
-```
+```bash
 limactl shell dokploy
 sudo apt-get update && sudo apt-get -y upgrade
 curl -sSL https://dokploy.com/install.sh | sudo sh
@@ -625,7 +705,7 @@ OpenChamber on `:3000`.
 
 To reach Dokploy from your phone over the tailnet:
 
-```
+```bash
 # Install Tailscale inside the VM too:
 limactl shell dokploy
 curl -fsSL https://tailscale.com/install.sh | sh
@@ -669,7 +749,7 @@ a new dependency class, so it lives outside `bootstrap.sh` until you opt in.
 OrbStack (already installed via the `Brewfile`) ships a built-in
 Kubernetes distribution — no Docker Desktop required.
 
-```
+```bash
 orb start k8s
 kubectl config use-context orbstack
 kubectl get nodes
@@ -685,7 +765,7 @@ Follow the upstream Helm instructions in
 [jonwiggins/optio](https://github.com/jonwiggins/optio) — they're the
 source of truth and will drift faster than this README. The shape is:
 
-```
+```bash
 helm repo add optio https://jonwiggins.github.io/optio
 helm repo update
 helm upgrade --install optio optio/optio \
@@ -705,7 +785,7 @@ Optio's UI defaults to `:3100`. OrbStack's k8s exposes services on
 tailnet, expose the Mac's port (Tailscale's mesh handles the rest — no
 public ingress, ACLs are the firewall):
 
-```
+```bash
 kubectl -n optio port-forward --address 0.0.0.0 svc/optio-web 3100:3100
 ```
 

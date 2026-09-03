@@ -2,6 +2,8 @@
 # Quick health check of the homelab stack.
 set -uo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 BOLD=$'\033[1m'; GRN=$'\033[32m'; RED=$'\033[31m'; DIM=$'\033[2m'; RST=$'\033[0m'
 
 check_cmd() {
@@ -79,3 +81,7 @@ if command -v tailscale &>/dev/null; then
 else
   echo "  ${DIM}(tailscale CLI not on PATH — open the GUI app)${RST}"
 fi
+
+echo
+echo "${BOLD}macOS resource tuning${RST}"
+"${SCRIPT_DIR}/debloat-mac.sh" status

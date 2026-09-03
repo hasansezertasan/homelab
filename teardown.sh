@@ -5,7 +5,14 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAUNCH_DIR="$HOME/Library/LaunchAgents"
+DEBLOAT_STATE_DIR="${HOMELAB_DEBLOAT_STATE_DIR:-$HOME/.config/homelab/debloat}"
+
+# Only roll back a snapshot this repo captured (marker written by debloat-mac.sh).
+if [[ -f "${DEBLOAT_STATE_DIR}/.homelab-debloat" ]]; then
+  "${SCRIPT_DIR}/debloat-mac.sh" undo
+fi
 
 echo "==> Reverting headless pmset tweaks (only what bootstrap.sh set)"
 sudo pmset -a disablesleep 0 2>/dev/null || true

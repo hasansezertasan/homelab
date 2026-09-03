@@ -279,6 +279,14 @@ else
   skip "set HOMELAB_HEADLESS=1 to disable sleep (incl. lid-closed) and configure auto-wake"
 fi
 
+# ---------- 6b. conservative resource tuning (optional) ----------
+step "macOS resource tuning (opt-in)"
+if [[ "${HOMELAB_DEBLOAT:-0}" == "1" ]]; then
+  "${SCRIPT_DIR}/debloat-mac.sh" apply
+else
+  skip "set HOMELAB_DEBLOAT=1 to disable unused indexing/analysis and visual effects"
+fi
+
 # ---------- 7. Claude Code skill packs ----------
 # Installed via the `skills` CLI (npx, no global install needed). The CLI is
 # itself idempotent — re-runs no-op or pick up upstream updates, mirroring
@@ -315,6 +323,7 @@ ${GRN}${BOLD}Done.${RST} Next steps:
   ${BOLD}4.${RST} OpenChamber is running on ${BOLD}http://localhost:3000${RST}
      (or http://<tailscale-ip>:3000 from anywhere on your tailnet).
   ${BOLD}5.${RST} For headless Mac mode: re-run with ${BOLD}HOMELAB_HEADLESS=1 ./bootstrap.sh${RST}
+  ${BOLD}6.${RST} For conservative resource tuning: re-run with ${BOLD}HOMELAB_DEBLOAT=1 ./bootstrap.sh${RST}
 
 Logs for the launchd services live in ${DIM}~/Library/Logs/homelab/${RST}.
 
