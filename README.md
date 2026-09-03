@@ -102,7 +102,7 @@ anything already installed and reloads the launchd jobs cleanly.
         │             MacBook M1 Pro (home)             │
         │  Tailscale  identity + reachability           │
         │  RustDesk   desktop @ 100.x.x.x               │
-        │  Hermes     dashboard :9119 / desktop app    │
+        │  Hermes     dashboard :9119 (localhost only)  │
         │  OpenCode   :4096   (localhost only)          │
         │  OpenChamber :3000  (tailnet)                 │
         │  Orca       :6768   (tailnet, opt-in)         │
@@ -534,7 +534,8 @@ installed (it doubles as a standalone ADE) — remove it with
 Hermes is the agent that lives on the box. Three ways to drive it, all local
 to the Mac (reach the GUI from afar via RustDesk over the tailnet):
 
-- `hermes` — interactive TUI in your terminal
+- `hermes` — interactive chat in your terminal (classic REPL;
+  `hermes --tui` for the modern TUI)
 - `hermes desktop` — Electron desktop app
 - `hermes dashboard` — web UI on `127.0.0.1:9119` (manage config, API keys,
   sessions)
@@ -568,17 +569,16 @@ RustDesk desktop session; that's the simplest secure story and needs no
 launchd job.
 
 > If you later want the dashboard reachable from other tailnet devices'
-> browsers, register an auth provider first (`hermes dashboard register` wires
-> up Nous Portal OAuth) and bind to `0.0.0.0`, or front loopback with
-> `tailscale serve`.
+> browsers, front the loopback listener with `tailscale serve` — it keeps the
+> bind on `127.0.0.1` and adds TLS. Only bind `0.0.0.0` if you really need a
+> LAN listener, and register an auth provider first (`hermes dashboard
+> register` wires up Nous Portal OAuth).
 
 #### Logs
 
 ```
 tail -f ~/.hermes/logs/hermes.log
 ```
-
-(The launchd plist also writes to `~/Library/Logs/homelab/hermes.log`.)
 
 </details>
 

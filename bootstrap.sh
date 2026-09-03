@@ -194,7 +194,8 @@ unset esc_pw
 
 # Hermes has no launchd job — you launch it on demand via `hermes desktop`
 # (Electron app) or `hermes dashboard` (web UI on 127.0.0.1:9119), or the
-# `hermes` terminal TUI. See README §Hermes Agent.
+# `hermes` terminal chat (`hermes --tui` for the modern TUI).
+# See README §Hermes Agent.
 
 # ---------- 5b. Orca headless runtime (opt-in alternative to OpenChamber) ----------
 # The `orca` cask (Brewfile) ships the desktop app plus the `orca` CLI. Its

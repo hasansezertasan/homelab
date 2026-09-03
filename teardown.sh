@@ -15,10 +15,13 @@ echo "    pmset tweaks reverted to common defaults — verify with: pmset -g"
 echo "    (does not restore any pre-bootstrap custom pmset config)"
 
 echo "==> Unloading launchd jobs"
+# com.nousresearch.hermes-gateway is legacy — bootstrap.sh never installs it any
+# more, but keep it here so boxes that opted into the old gateway get cleaned up.
 for label in \
   dev.openchamber.opencode \
   dev.openchamber.openchamber \
-  dev.onorca.orca
+  dev.onorca.orca \
+  com.nousresearch.hermes-gateway
 do
   plist="${LAUNCH_DIR}/${label}.plist"
   if [[ -f "$plist" ]]; then
