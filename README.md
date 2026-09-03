@@ -55,9 +55,12 @@ Then:
   → Login Items).
 - `curl | bash` (official installer): OpenChamber.
 - Drops two launchd plists in `~/Library/LaunchAgents/` so OpenCode and
-  OpenChamber auto-start on boot. (Hermes ships no plist here — you launch it
-  on demand via `hermes desktop` or `hermes dashboard`, and its one background
-  job is installed by Hermes itself; see `HOMELAB_HERMES_CRON` below.)
+  OpenChamber auto-start on boot, and runs `hermes gateway install` so Hermes'
+  background process is supervised too — that process hosts the `hermes cron`
+  scheduler, so scheduled agent turns fire on an always-on box. It needs no
+  messaging platform configured. Hermes writes and owns that plist itself, so
+  none ships here. The interactive Hermes surfaces (`hermes desktop`,
+  `hermes dashboard`) stay on-demand.
 - Prompts (once) for the OpenChamber UI password and stores it at
   `~/.config/homelab/openchamber.password` (mode 600) so re-runs stay
   non-interactive. Set `OPENCHAMBER_UI_PASSWORD` in the env to skip the prompt.
@@ -65,11 +68,6 @@ Then:
   headless runtime (`orca serve`) on `:6768` over the tailnet — a parallel-agent
   alternative to OpenChamber. Off by default; OpenChamber stays the running
   default. See [Orca](#orca-parallel-agent-ade).
-- Optional: with `HOMELAB_HERMES_CRON=1`, runs `hermes gateway install` so
-  Hermes' supervised background process starts at login — that process hosts
-  the `hermes cron` scheduler, so scheduled agent turns actually fire on an
-  always-on box. No messaging platform required. Upstream owns that plist, so
-  none ships here. See [Hermes Agent](#hermes-agent-nous-research).
 - Optional: with `HOMELAB_HEADLESS=1`, disables sleep and configures the Mac
   to wake on power and restart-after-freeze — closer to a real server. Display
   blanks after `HOMELAB_DISPLAYSLEEP` minutes (default `2`; set `0` to never
@@ -112,7 +110,7 @@ anything already installed and reloads the launchd jobs cleanly.
         │             MacBook M1 Pro (home)             │
         │  Tailscale  identity + reachability           │
         │  RustDesk   desktop @ 100.x.x.x               │
-        │  Hermes     dashboard :9119 (localhost only)  │
+        │  Hermes     dashboard :9119 + cron scheduler  │
         │  OpenCode   :4096   (localhost only)          │
         │  OpenChamber :3000  (tailnet)                 │
         │  Orca       :6768   (tailnet, opt-in)         │
@@ -666,19 +664,20 @@ nothing but host the scheduler. That is why the gateway process is still worth
 running even though this repo dropped every bit of Telegram/Discord plumbing:
 "gateway" now means *the supervised host*, not *the chat bridge*.
 
-Turn it on with:
+`bootstrap.sh` supervises it for you — no flag, same as the OpenCode and
+OpenChamber jobs. On a first-ever run it registers the job without starting it,
+because Hermes has no model provider until you run `hermes setup`; it comes up
+on the next login, and any later `./bootstrap.sh` starts it straight away.
+
+Hermes writes and owns that LaunchAgent itself (`ai.hermes.gateway`), so this
+repo ships **no** plist template for it: upstream's already carries the right
+venv `PATH` / `VIRTUAL_ENV` / `HERMES_HOME`, a 30s respawn throttle, and a 25s
+graceful-drain timeout, which beats anything hand-rolled here.
 
 ```bash
-HOMELAB_HERMES_CRON=1 ./bootstrap.sh
+hermes gateway status       # is it supervised?
+hermes gateway uninstall    # opt back out — bootstrap re-adds it on next run
 ```
-
-That runs `hermes gateway install --force --start-now --start-on-login`.
-Hermes writes and owns the LaunchAgent itself (`ai.hermes.gateway`), so this
-repo ships **no** plist template for it — upstream's already carries the right
-venv `PATH` / `VIRTUAL_ENV` / `HERMES_HOME`, a 30s respawn throttle, and a 25s
-graceful-drain timeout, which is strictly better than one hand-rolled here.
-Inspect it with `hermes gateway status`; remove it with
-`hermes gateway uninstall`.
 
 #### Why local-only
 

@@ -73,17 +73,17 @@ echo "${BOLD}launchd${RST}"
 check_launchd dev.openchamber.opencode
 check_launchd dev.openchamber.openchamber
 [[ -f "$HOME/Library/LaunchAgents/dev.onorca.orca.plist" ]] && check_launchd dev.onorca.orca
-# Hermes' background process is opt-in (HOMELAB_HERMES_CRON=1) and its plist is
-# written by `hermes gateway install`, not from launchd/. Only report it when
-# installed, so a deliberately-absent job isn't a failure.
-[[ -f "$HOME/Library/LaunchAgents/ai.hermes.gateway.plist" ]] && check_launchd ai.hermes.gateway
+# Hermes' plist is written by `hermes gateway install`, not from a template in
+# launchd/ — but bootstrap installs it unconditionally, so a missing job is a
+# real failure here, same as the two above.
+check_launchd ai.hermes.gateway
 
 echo
 echo "${BOLD}Hermes${RST}"
 if command -v hermes &>/dev/null; then
   # `cron status` reports whether the supervised process is ticking; it exits
   # non-zero when nothing is running, which is a valid state to report here.
-  hermes cron status 2>/dev/null | sed 's/^/  /' || echo "  ${DIM}(scheduler not running — HOMELAB_HERMES_CRON=1 to supervise it)${RST}"
+  hermes cron status 2>/dev/null | sed 's/^/  /' || echo "  ${DIM}(scheduler not running — re-run ./bootstrap.sh)${RST}"
 else
   echo "  ${DIM}(hermes CLI not on PATH)${RST}"
 fi

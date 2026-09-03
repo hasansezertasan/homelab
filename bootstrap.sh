@@ -258,29 +258,43 @@ else
   skip "set HOMELAB_ORCA=1 to run Orca headless (orca serve) as an alternative to OpenChamber"
 fi
 
-# ---------- 5c. Hermes scheduler (opt-in) ----------
+# ---------- 5c. Hermes background process ----------
 # `hermes cron` jobs only fire while a supervised `hermes gateway run` process
 # is alive — the ticker lives inside it, and it needs no messaging platform
-# configured to do that. Unlike every other job here, the plist is written and
-# owned by Hermes itself (`ai.hermes.gateway`), not by a template in launchd/:
-# upstream's already carries the correct venv PATH/VIRTUAL_ENV/HERMES_HOME plus
-# respawn-throttle and graceful-drain tuning, and it rewrites the file on every
-# `hermes update`. So shell out instead of hand-rolling a duplicate.
-step "Hermes scheduler (opt-in)"
-if [[ "${HOMELAB_HERMES_CRON:-0}" == "1" ]]; then
-  if ! command -v hermes &>/dev/null; then
-    warn "hermes not on PATH (Brewfile should provide it) — skipping gateway install"
-  # --force makes this idempotent: it rewrites the plist to match the current
-  # Hermes install and restarts the service, mirroring the unload+load reload
-  # that install_plist does for this repo's own jobs.
-  elif hermes gateway install --force --start-now --start-on-login; then
+# configured to do that. Installed unconditionally, like the OpenCode and
+# OpenChamber jobs: an always-on box that can't run scheduled agent turns is
+# missing the point.
+#
+# Unlike every other job here the plist is written and owned by Hermes itself
+# (`ai.hermes.gateway`), not by a template in launchd/: upstream's already
+# carries the correct venv PATH/VIRTUAL_ENV/HERMES_HOME plus respawn-throttle
+# and graceful-drain tuning, and it rewrites the file on every `hermes update`.
+# So shell out instead of hand-rolling a duplicate.
+step "Hermes background process"
+# On a first-ever bootstrap Hermes has no model provider yet (that's `hermes
+# setup`, next-step 3), and starting the gateway now would just crash-loop
+# against launchd's KeepAlive. So only --start-now once a config exists; the
+# --start-on-login registration means it comes up on the next login either
+# way. A later re-run (post-setup) starts it immediately.
+hermes_start_flag="--start-now"
+if [[ ! -f "$HOME/.hermes/config.yaml" ]]; then
+  hermes_start_flag="--no-start-now"
+fi
+if ! command -v hermes &>/dev/null; then
+  warn "hermes not on PATH (Brewfile should provide it) — skipping gateway install"
+# --force makes this idempotent: it rewrites the plist to match the current
+# Hermes install and restarts the service, mirroring the unload+load reload
+# that install_plist does for this repo's own jobs.
+elif hermes gateway install --force "$hermes_start_flag" --start-on-login; then
+  if [[ "$hermes_start_flag" == "--start-now" ]]; then
     ok "hermes gateway installed (ai.hermes.gateway) — hosts the 'hermes cron' scheduler"
   else
-    warn "hermes gateway install failed — run it by hand, or 'hermes doctor' to diagnose"
+    ok "hermes gateway registered (ai.hermes.gateway) — starts after 'hermes setup' + next login"
   fi
 else
-  skip "set HOMELAB_HERMES_CRON=1 to supervise Hermes' background process (runs 'hermes cron' jobs)"
+  warn "hermes gateway install failed — run it by hand, or 'hermes doctor' to diagnose"
 fi
+unset hermes_start_flag
 
 # ---------- 6. headless-server polish (optional but recommended) ----------
 step "Headless server tweaks"
@@ -346,10 +360,10 @@ ${GRN}${BOLD}Done.${RST} Next steps:
      ${BOLD}hermes desktop${RST} or ${BOLD}hermes dashboard${RST} (web UI on 127.0.0.1:9119).
   ${BOLD}4.${RST} OpenChamber is running on ${BOLD}http://localhost:3000${RST}
      (or http://<tailscale-ip>:3000 from anywhere on your tailnet).
-  ${BOLD}5.${RST} For scheduled agent turns: re-run with ${BOLD}HOMELAB_HERMES_CRON=1 ./bootstrap.sh${RST}
-     then ${BOLD}hermes cron create${RST}. (See README §Hermes Agent.)
+  ${BOLD}5.${RST} Hermes' background process is supervised by launchd — add scheduled
+     agent turns with ${BOLD}hermes cron create${RST}. (See README §Hermes Agent.)
   ${BOLD}6.${RST} For headless Mac mode: re-run with ${BOLD}HOMELAB_HEADLESS=1 ./bootstrap.sh${RST}
-  ${BOLD}6.${RST} For conservative resource tuning: re-run with ${BOLD}HOMELAB_DEBLOAT=1 ./bootstrap.sh${RST}
+  ${BOLD}7.${RST} For conservative resource tuning: re-run with ${BOLD}HOMELAB_DEBLOAT=1 ./bootstrap.sh${RST}
 
 Logs for the launchd services live in ${DIM}~/Library/Logs/homelab/${RST}.
 
