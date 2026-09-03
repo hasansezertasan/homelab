@@ -164,7 +164,8 @@ HOMELAB_DEBLOAT=1 ./bootstrap.sh
 ```
 
 [`debloat-mac.sh`](debloat-mac.sh) captures the effective state before its first
-change under `~/.config/homelab/debloat/` (mode 700), then:
+change under `~/.config/homelab/debloat/` (mode 700), marking the directory as
+its own, then:
 
 - disables Spotlight indexing on the startup volume—agents use `rg` and `fd`;
 - disables the current user's `photoanalysisd` LaunchAgent; and
@@ -184,9 +185,10 @@ Run the helper directly to inspect or reverse it:
 
 Re-running `apply` preserves the original snapshot. `undo` restores the saved
 Spotlight and accessibility values and the previous effective Photos-analysis
-state; it never guesses if no snapshot exists. `teardown.sh` calls this rollback
-automatically when it finds a snapshot. Reduce Motion/Transparency changes may
-require Terminal Full Disk Access and a logout before macOS reflects them.
+state; it never guesses if no snapshot exists, and it only restores a snapshot
+this repo captured. `teardown.sh` calls this rollback automatically when it
+finds one. Reduce Motion/Transparency changes may require Terminal Full Disk
+Access and a logout before macOS reflects them.
 
 ### Diagnose `syspolicyd` before changing security policy
 

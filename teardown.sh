@@ -9,7 +9,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAUNCH_DIR="$HOME/Library/LaunchAgents"
 DEBLOAT_STATE_DIR="${HOMELAB_DEBLOAT_STATE_DIR:-$HOME/.config/homelab/debloat}"
 
-if [[ -d "$DEBLOAT_STATE_DIR" ]]; then
+# Only roll back a snapshot this repo captured (marker written by debloat-mac.sh).
+if [[ -f "${DEBLOAT_STATE_DIR}/.homelab-debloat" ]]; then
   "${SCRIPT_DIR}/debloat-mac.sh" undo
 fi
 

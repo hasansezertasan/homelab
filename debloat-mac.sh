@@ -19,6 +19,9 @@ fail() { printf "    ${RED}✗${RST} %s\n" "$*" >&2; exit 1; }
 
 ACTION="${1:-apply}"
 STATE_DIR="${HOMELAB_DEBLOAT_STATE_DIR:-$HOME/.config/homelab/debloat}"
+# Written on first capture so `undo` only ever restores a snapshot this repo
+# took — a pre-existing directory at STATE_DIR is left alone.
+STATE_MARKER="${STATE_DIR}/.homelab-debloat"
 UID_NUM="$(id -u)"
 PHOTO_SERVICE="com.apple.photoanalysisd"
 
@@ -44,6 +47,8 @@ save_once() {
   [[ -f "$path" ]] && return 0
   mkdir -p "$STATE_DIR"
   chmod 700 "$STATE_DIR"
+  [[ -f "$STATE_MARKER" ]] || printf 'homelab-debloat-state v1\n' > "$STATE_MARKER"
+  chmod 600 "$STATE_MARKER"
   printf '%s\n' "$value" > "$path"
   chmod 600 "$path"
 }
@@ -207,7 +212,7 @@ restore_accessibility_setting() {
 
 show_status() {
   local managed=no
-  [[ -d "$STATE_DIR" ]] && managed=yes
+  [[ -f "$STATE_MARKER" ]] && managed=yes
   printf "  %-26s %s\n" "homelab state snapshot" "$managed"
   printf "  %-26s %s\n" "Spotlight indexing" "$(spotlight_state)"
   printf "  %-26s %s\n" "Photos analysis" "$(photo_state)"
@@ -226,11 +231,21 @@ case "$ACTION" in
     ;;
   undo)
     step "Restoring pre-tuning macOS state"
+    if [[ ! -f "$STATE_MARKER" ]]; then
+      skip "no homelab snapshot in $STATE_DIR; nothing restored"
+      exit 0
+    fi
     restore_spotlight
     restore_photoanalysis
     restore_accessibility_setting reduceMotion "Reduce motion"
     restore_accessibility_setting reduceTransparency "Reduce transparency"
-    rmdir "$STATE_DIR" 2>/dev/null || true
+    # Keep the marker while any value is still unrestored so a later `undo` works.
+    shopt -s nullglob
+    leftover=("$STATE_DIR"/*)
+    if [[ ${#leftover[@]} -eq 0 ]]; then
+      rm -f "$STATE_MARKER"
+      rmdir "$STATE_DIR" 2>/dev/null || true
+    fi
     ;;
   status)
     show_status
