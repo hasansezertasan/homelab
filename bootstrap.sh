@@ -282,6 +282,12 @@ if [[ ! -f "$HOME/.hermes/config.yaml" ]]; then
 fi
 if ! command -v hermes &>/dev/null; then
   warn "hermes not on PATH (Brewfile should provide it) — skipping gateway install"
+# §2 runs `brew bundle --no-upgrade`, so a box bootstrapped before this change
+# keeps whatever hermes-agent it already had. Probe for the flags this section
+# needs rather than assuming them: an older CLI would just dump an argparse
+# error mid-bootstrap, which reads like a bug instead of "you're out of date".
+elif ! hermes gateway install --help 2>/dev/null | grep -q -- '--start-on-login'; then
+  warn "hermes predates the gateway service flags — run 'brew upgrade hermes-agent' (or 'hermes update'), then re-run this script"
 # --force makes this idempotent: it rewrites the plist to match the current
 # Hermes install and restarts the service, mirroring the unload+load reload
 # that install_plist does for this repo's own jobs.

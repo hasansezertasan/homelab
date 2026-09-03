@@ -53,11 +53,19 @@ echo "==> Removing Hermes' own launchd job (ai.hermes.gateway)"
 # a template in launchd/, so let Hermes remove it — and do it before the binary
 # is uninstalled below, while the CLI still exists.
 if command -v hermes &>/dev/null; then
-  hermes gateway uninstall 2>/dev/null && echo "    removed ai.hermes.gateway" \
-    || echo "    no ai.hermes.gateway job to remove"
-else
-  echo "    hermes not on PATH — skipping (remove ~/Library/LaunchAgents/ai.hermes.gateway.plist by hand if it exists)"
+  hermes gateway uninstall 2>/dev/null && echo "    removed ai.hermes.gateway" || true
 fi
+# Fall back to the same unload+rm the loop above does. Covers both ways the CLI
+# can leave the job behind: hermes missing from PATH (partial/manual uninstall),
+# or `gateway uninstall` failing on a damaged install. Never exit this script
+# with a KeepAlive job still loaded against a binary we're about to remove.
+hermes_plist="${LAUNCH_DIR}/ai.hermes.gateway.plist"
+if [[ -f "$hermes_plist" ]]; then
+  launchctl unload "$hermes_plist" 2>/dev/null || true
+  rm -f "$hermes_plist"
+  echo "    removed ai.hermes.gateway (plist left behind by the CLI)"
+fi
+unset hermes_plist
 
 echo "==> Removing OpenChamber / OpenCode / Hermes binaries"
 brew uninstall openchamber 2>/dev/null || true
