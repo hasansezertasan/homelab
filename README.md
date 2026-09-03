@@ -7,7 +7,7 @@ home server running:
 | --- | --- | --- |
 | Network | [Tailscale](https://tailscale.com) | Mesh VPN—the only thing reachable from afar |
 | Remote GUI | [RustDesk](https://rustdesk.com) | Desktop over the tailnet, with no relay needed |
-| AI agent | [Hermes](https://github.com/NousResearch/hermes-agent) | Web dashboard, desktop app, or terminal chat |
+| AI agent | [Hermes](https://github.com/NousResearch/hermes-agent) | Web dashboard, desktop app, terminal chat, cron |
 | Coding (CLI) | [OpenCode](https://opencode.ai) | Headless AI coding agent on `:4096` |
 | Coding (UI) | [OpenChamber](https://openchamber.dev) | Web/PWA frontend for OpenCode on `:3000` |
 | Coding (UI) | [Orca](https://onorca.dev) *(opt-in)* | Parallel-agent ADE; headless server on `:6768` |
@@ -55,8 +55,9 @@ Then:
   → Login Items).
 - `curl | bash` (official installer): OpenChamber.
 - Drops two launchd plists in `~/Library/LaunchAgents/` so OpenCode and
-  OpenChamber auto-start on boot. (Hermes has no launchd job — you launch it
-  on demand via `hermes desktop` or `hermes dashboard`.)
+  OpenChamber auto-start on boot. (Hermes ships no plist here — you launch it
+  on demand via `hermes desktop` or `hermes dashboard`, and its one background
+  job is installed by Hermes itself; see `HOMELAB_HERMES_CRON` below.)
 - Prompts (once) for the OpenChamber UI password and stores it at
   `~/.config/homelab/openchamber.password` (mode 600) so re-runs stay
   non-interactive. Set `OPENCHAMBER_UI_PASSWORD` in the env to skip the prompt.
@@ -64,6 +65,11 @@ Then:
   headless runtime (`orca serve`) on `:6768` over the tailnet — a parallel-agent
   alternative to OpenChamber. Off by default; OpenChamber stays the running
   default. See [Orca](#orca-parallel-agent-ade).
+- Optional: with `HOMELAB_HERMES_CRON=1`, runs `hermes gateway install` so
+  Hermes' supervised background process starts at login — that process hosts
+  the `hermes cron` scheduler, so scheduled agent turns actually fire on an
+  always-on box. No messaging platform required. Upstream owns that plist, so
+  none ships here. See [Hermes Agent](#hermes-agent-nous-research).
 - Optional: with `HOMELAB_HEADLESS=1`, disables sleep and configures the Mac
   to wake on power and restart-after-freeze — closer to a real server. Display
   blanks after `HOMELAB_DISPLAYSLEEP` minutes (default `2`; set `0` to never
@@ -608,16 +614,18 @@ installed (it doubles as a standalone ADE) — remove it with
 ### Hermes Agent (Nous Research)
 
 <details>
-<summary><strong>Dashboard, desktop app, terminal TUI</strong></summary>
+<summary><strong>Dashboard, desktop app, terminal, scheduled tasks</strong></summary>
 
-Hermes is the agent that lives on the box. Three ways to drive it, all local
-to the Mac (reach the GUI from afar via RustDesk over the tailnet):
+Hermes is the agent that lives on the box. Four ways to drive it, all bound to
+loopback (reach the GUI from afar via RustDesk over the tailnet):
 
 - `hermes` — interactive chat in your terminal (classic REPL;
   `hermes --tui` for the modern TUI)
 - `hermes desktop` — Electron desktop app
 - `hermes dashboard` — web UI on `127.0.0.1:9119` (manage config, API keys,
   sessions)
+- `hermes serve` — the same `:9119` server, headless (never opens a browser).
+  `hermes desktop` starts one for itself, so you rarely run this by hand.
 
 #### First run
 
@@ -639,6 +647,39 @@ hermes dashboard        # web UI on 127.0.0.1:9119
 hermes dashboard --status   # list / --stop to stop running web servers
 ```
 
+#### Scheduled tasks
+
+The one Hermes feature that genuinely wants an always-on box:
+
+```bash
+hermes cron create          # interactive; `add` is an alias
+hermes cron list
+hermes cron status          # is the scheduler ticking?
+hermes cron doctor          # check jobs for common problems
+hermes cron runs            # durable execution history
+```
+
+Jobs only fire while a supervised `hermes gateway run` process is alive — the
+ticker lives inside it. That process needs **no** messaging platform
+configured; with no `platforms:` block in `~/.hermes/config.yaml` it does
+nothing but host the scheduler. That is why the gateway process is still worth
+running even though this repo dropped every bit of Telegram/Discord plumbing:
+"gateway" now means *the supervised host*, not *the chat bridge*.
+
+Turn it on with:
+
+```bash
+HOMELAB_HERMES_CRON=1 ./bootstrap.sh
+```
+
+That runs `hermes gateway install --force --start-now --start-on-login`.
+Hermes writes and owns the LaunchAgent itself (`ai.hermes.gateway`), so this
+repo ships **no** plist template for it — upstream's already carries the right
+venv `PATH` / `VIRTUAL_ENV` / `HERMES_HOME`, a 30s respawn throttle, and a 25s
+graceful-drain timeout, which is strictly better than one hand-rolled here.
+Inspect it with `hermes gateway status`; remove it with
+`hermes gateway uninstall`.
+
 #### Why local-only
 
 `hermes dashboard` binds `127.0.0.1` by default. The old `--insecure` flag is
@@ -654,11 +695,39 @@ launchd job.
 > LAN listener, and register an auth provider first (`hermes dashboard
 > register` wires up Nous Portal OAuth).
 
-#### Logs
+#### Health
 
 ```bash
-tail -f ~/.hermes/logs/hermes.log
+hermes doctor               # static checks; --fix repairs, --live probes backends
+hermes status --deep        # per-component status
+hermes security audit       # OSV.dev scan of the venv + plugin deps
 ```
+
+#### Logs
+
+`hermes logs` reads `~/.hermes/logs/` — there is no single `hermes.log`:
+
+```bash
+hermes logs -f              # agent.log (the default)
+hermes logs errors -f       # errors.log
+hermes logs gateway -f      # the supervised gateway/scheduler process
+hermes logs list            # everything else in the directory
+```
+
+#### Coming from the old messaging gateway
+
+Older revisions of this repo shipped a (commented-out)
+`com.nousresearch.hermes-gateway` plist, and Hermes' own
+`hermes gateway install` writes `ai.hermes.gateway`. If you wired up either
+one for Telegram/Discord and no longer want it:
+
+```bash
+hermes gateway uninstall    # drops ai.hermes.gateway
+./teardown.sh               # also clears the old repo-shipped label
+```
+
+`hermes gateway setup` still exists upstream if you ever want messaging back —
+this repo just doesn't wire it up any more.
 
 </details>
 

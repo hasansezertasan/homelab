@@ -48,6 +48,17 @@ done
 # yourself if you really mean to: brew uninstall --cask orca
 echo "    left orca installed (run 'brew uninstall --cask orca' to remove the app)"
 
+echo "==> Removing Hermes' own launchd job (ai.hermes.gateway)"
+# This plist is written by `hermes gateway install` (HOMELAB_HERMES_CRON=1), not
+# from a template in launchd/, so let Hermes remove it — and do it before the
+# binary is uninstalled below, while the CLI still exists.
+if command -v hermes &>/dev/null; then
+  hermes gateway uninstall 2>/dev/null && echo "    removed ai.hermes.gateway" \
+    || echo "    no ai.hermes.gateway job to remove"
+else
+  echo "    hermes not on PATH — skipping (remove ~/Library/LaunchAgents/ai.hermes.gateway.plist by hand if it exists)"
+fi
+
 echo "==> Removing OpenChamber / OpenCode / Hermes binaries"
 brew uninstall openchamber 2>/dev/null || true
 # Only the installed binary is removed; ~/.opencode/auth.json + other state
