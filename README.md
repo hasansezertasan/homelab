@@ -7,7 +7,7 @@ home server running:
 | --- | --- | --- |
 | Network | [Tailscale](https://tailscale.com) | Mesh VPN—the only thing reachable from afar |
 | Remote GUI | [RustDesk](https://rustdesk.com) | Desktop over the tailnet, with no relay needed |
-| AI agent | [Hermes](https://github.com/NousResearch/hermes-agent) | Talk through Telegram, Discord, Slack, or Signal |
+| AI agent | [Hermes](https://github.com/NousResearch/hermes-agent) | Web dashboard, desktop app, terminal chat, cron |
 | Coding (CLI) | [OpenCode](https://opencode.ai) | Headless AI coding agent on `:4096` |
 | Coding (UI) | [OpenChamber](https://openchamber.dev) | Web/PWA frontend for OpenCode on `:3000` |
 | Coding (UI) | [Orca](https://onorca.dev) *(opt-in)* | Parallel-agent ADE; headless server on `:6768` |
@@ -33,7 +33,8 @@ Then:
    - Headless / phone-driven: run `tailscale login --qr` in Terminal and scan
      the printed QR with your phone—no browser on the Mac needed.
 2. Open **RustDesk** → enable Direct IP Access (see [RustDesk over Tailscale](#rustdesk-over-tailscale)).
-3. Run `hermes setup` to pick a model + configure platforms.
+3. Run `hermes setup` to pick a model provider, then use `hermes desktop`
+   (Electron app) or `hermes dashboard` (web UI on `127.0.0.1:9119`).
 4. **OpenChamber UI password** — `bootstrap.sh` prompts for it the first
    time and stores it at `~/.config/homelab/openchamber.password` (mode 600).
    Subsequent runs reuse the stored value, so the script stays idempotent.
@@ -54,8 +55,12 @@ Then:
   → Login Items).
 - `curl | bash` (official installer): OpenChamber.
 - Drops two launchd plists in `~/Library/LaunchAgents/` so OpenCode and
-  OpenChamber auto-start on boot. (Hermes gateway plist ships in the repo
-  but is opt-in — uncomment one line in `bootstrap.sh` to enable.)
+  OpenChamber auto-start on boot, and runs `hermes gateway install` so Hermes'
+  background process is supervised too — that process hosts the `hermes cron`
+  scheduler, so scheduled agent turns fire on an always-on box. It needs no
+  messaging platform configured. Hermes writes and owns that plist itself, so
+  none ships here. The interactive Hermes surfaces (`hermes desktop`,
+  `hermes dashboard`) stay on-demand.
 - Prompts (once) for the OpenChamber UI password and stores it at
   `~/.config/homelab/openchamber.password` (mode 600) so re-runs stay
   non-interactive. Set `OPENCHAMBER_UI_PASSWORD` in the env to skip the prompt.
@@ -105,7 +110,7 @@ anything already installed and reloads the launchd jobs cleanly.
         │             MacBook M1 Pro (home)             │
         │  Tailscale  identity + reachability           │
         │  RustDesk   desktop @ 100.x.x.x               │
-        │  Hermes     chat from Telegram/Discord/...    │
+        │  Hermes     dashboard :9119 + cron scheduler  │
         │  OpenCode   :4096   (localhost only)          │
         │  OpenChamber :3000  (tailnet)                 │
         │  Orca       :6768   (tailnet, opt-in)         │
@@ -128,8 +133,7 @@ If you want HTTPS for the web UI, use `tailscale serve` — see [OpenCode + Open
 └── launchd/
     ├── dev.openchamber.opencode.plist
     ├── dev.openchamber.openchamber.plist
-    ├── dev.onorca.orca.plist                   (opt-in — HOMELAB_ORCA=1)
-    └── com.nousresearch.hermes-gateway.plist   (opt-in)
+    └── dev.onorca.orca.plist                   (opt-in — HOMELAB_ORCA=1)
 ```
 
 Per-tool setup guides live inline at the bottom of this README — see
@@ -258,9 +262,9 @@ server" problem, and they compose without fighting each other:
   recommend exactly this combo — direct IP access, no RustDesk relay.
 - **OpenCode + OpenChamber** turn the Mac into "coding agent from your
   phone." OpenChamber is explicitly built to expose OpenCode over a VPN.
-- **Hermes** is the brain that lives on the box — talk to it from anywhere
-  via the messaging gateway, and it remembers across sessions thanks to
-  the Honcho-backed memory loop.
+- **Hermes** is the brain that lives on the box — drive it from its web
+  dashboard or desktop app (or the terminal TUI), and it remembers across
+  sessions thanks to the Honcho-backed memory loop.
 - **Dokploy** (later) becomes the place to drop random Docker apps. Inside
   a Lima VM, you can blow it away and restart without touching the Mac.
 
@@ -608,11 +612,18 @@ installed (it doubles as a standalone ADE) — remove it with
 ### Hermes Agent (Nous Research)
 
 <details>
-<summary><strong>Gateway setup, enabling auto-start</strong></summary>
+<summary><strong>Dashboard, desktop app, terminal, scheduled tasks</strong></summary>
 
-The killer feature here for a home server: Hermes has a **messaging gateway**
-that lets you talk to the agent from Telegram, Discord, Slack, WhatsApp, or
-Signal. The Mac runs the agent; you talk to it from your phone, anywhere.
+Hermes is the agent that lives on the box. Four ways to drive it, all bound to
+loopback (reach the GUI from afar via RustDesk over the tailnet):
+
+- `hermes` — interactive chat in your terminal (classic REPL;
+  `hermes --tui` for the modern TUI)
+- `hermes desktop` — Electron desktop app
+- `hermes dashboard` — web UI on `127.0.0.1:9119` (manage config, API keys,
+  sessions)
+- `hermes serve` — the same `:9119` server, headless (never opens a browser).
+  `hermes desktop` starts one for itself, so you rarely run this by hand.
 
 #### First run
 
@@ -626,45 +637,96 @@ This walks you through:
 - Configuring tools
 - Optionally migrating from OpenClaw
 
-Then either:
+Then launch whichever surface you prefer:
 
-- `hermes` — interactive TUI in your terminal
-- `hermes gateway setup && hermes gateway start` — messaging mode
+```bash
+hermes desktop          # Electron app
+hermes dashboard        # web UI on 127.0.0.1:9119
+hermes dashboard --status   # list / --stop to stop running web servers
+```
 
-#### Enabling the gateway as a launchd service
+#### Scheduled tasks
 
-By default `bootstrap.sh` does **not** auto-start the gateway, because you need
-to add platform credentials first. Once you've done `hermes gateway setup` and
-added at least one platform (Telegram is easiest):
+The one Hermes feature that genuinely wants an always-on box:
 
-1. Edit `bootstrap.sh` and uncomment this line near the bottom:
+```bash
+hermes cron create          # interactive; `add` is an alias
+hermes cron list
+hermes cron status          # is the scheduler ticking?
+hermes cron doctor          # check jobs for common problems
+hermes cron runs            # durable execution history
+```
 
-   ```bash
-   # install_plist "com.nousresearch.hermes-gateway"
-   ```
+Jobs only fire while a supervised `hermes gateway run` process is alive — the
+ticker lives inside it. That process needs **no** messaging platform
+configured; with no `platforms:` block in `~/.hermes/config.yaml` it does
+nothing but host the scheduler. That is why the gateway process is still worth
+running even though this repo dropped every bit of Telegram/Discord plumbing:
+"gateway" now means *the supervised host*, not *the chat bridge*.
 
-2. Re-run `./bootstrap.sh`. The gateway now starts on boot.
+`bootstrap.sh` supervises it for you — no flag, same as the OpenCode and
+OpenChamber jobs. On a first-ever run it registers the job without starting it,
+because Hermes has no model provider until you run `hermes setup`; it comes up
+on the next login, and any later `./bootstrap.sh` starts it straight away.
 
-#### Why this pairs well with Tailscale
+Hermes writes and owns that LaunchAgent itself (`ai.hermes.gateway`), so this
+repo ships **no** plist template for it: upstream's already carries the right
+venv `PATH` / `VIRTUAL_ENV` / `HERMES_HOME`, a 30s respawn throttle, and a 25s
+graceful-drain timeout, which beats anything hand-rolled here.
 
-The gateway connects *outbound* to Telegram/Discord/etc., so it doesn't need
-inbound network access. You don't even need port forwarding — the agent
-running on your Mac can be reached from anywhere just by messaging the bot.
+```bash
+hermes gateway status       # is it supervised?
+hermes gateway uninstall    # opt back out — bootstrap re-adds it on next run
+```
 
-Tailscale matters here for two reasons:
+#### Why local-only
 
-1. **Browser dashboard.** Hermes ships a web UI on `:8080` you can pin to the
-   tailnet IP.
-2. **SSH backend.** If you set `hermes config terminal_backend ssh`, the
-   agent can run commands inside *other* tailnet machines, not just the Mac.
+`hermes dashboard` binds `127.0.0.1` by default. The old `--insecure` flag is
+a **no-op** as of the June 2026 hardening — a non-loopback bind now *requires*
+an auth provider (password or OAuth), so exposing it raw over the tailnet isn't
+possible anyway. Keep the dashboard on loopback and reach it through the
+RustDesk desktop session; that's the simplest secure story and needs no
+launchd job.
+
+> If you later want the dashboard reachable from other tailnet devices'
+> browsers, front the loopback listener with `tailscale serve` — it keeps the
+> bind on `127.0.0.1` and adds TLS. Only bind `0.0.0.0` if you really need a
+> LAN listener, and register an auth provider first (`hermes dashboard
+> register` wires up Nous Portal OAuth).
+
+#### Health
+
+```bash
+hermes doctor               # static checks; --fix repairs, --live probes backends
+hermes status --deep        # per-component status
+hermes security audit       # OSV.dev scan of the venv + plugin deps
+```
 
 #### Logs
 
+`hermes logs` reads `~/.hermes/logs/` — there is no single `hermes.log`:
+
 ```bash
-tail -f ~/.hermes/logs/hermes.log
+hermes logs -f              # agent.log (the default)
+hermes logs errors -f       # errors.log
+hermes logs gateway -f      # the supervised gateway/scheduler process
+hermes logs list            # everything else in the directory
 ```
 
-(The launchd plist also writes to `~/Library/Logs/homelab/hermes.log`.)
+#### Coming from the old messaging gateway
+
+Older revisions of this repo shipped a (commented-out)
+`com.nousresearch.hermes-gateway` plist, and Hermes' own
+`hermes gateway install` writes `ai.hermes.gateway`. If you wired up either
+one for Telegram/Discord and no longer want it:
+
+```bash
+hermes gateway uninstall    # drops ai.hermes.gateway
+./teardown.sh               # also clears the old repo-shipped label
+```
+
+`hermes gateway setup` still exists upstream if you ever want messaging back —
+this repo just doesn't wire it up any more.
 
 </details>
 

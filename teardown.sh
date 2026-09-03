@@ -22,6 +22,8 @@ echo "    pmset tweaks reverted to common defaults — verify with: pmset -g"
 echo "    (does not restore any pre-bootstrap custom pmset config)"
 
 echo "==> Unloading launchd jobs"
+# com.nousresearch.hermes-gateway is legacy — bootstrap.sh never installs it any
+# more, but keep it here so boxes that opted into the old gateway get cleaned up.
 for label in \
   dev.openchamber.opencode \
   dev.openchamber.openchamber \
@@ -45,6 +47,25 @@ done
 # The launchd job above is already unloaded/removed; the app stays. Remove it
 # yourself if you really mean to: brew uninstall --cask orca
 echo "    left orca installed (run 'brew uninstall --cask orca' to remove the app)"
+
+echo "==> Removing Hermes' own launchd job (ai.hermes.gateway)"
+# This plist is written by `hermes gateway install` (bootstrap.sh §5c), not from
+# a template in launchd/, so let Hermes remove it — and do it before the binary
+# is uninstalled below, while the CLI still exists.
+if command -v hermes &>/dev/null; then
+  hermes gateway uninstall 2>/dev/null && echo "    removed ai.hermes.gateway" || true
+fi
+# Fall back to the same unload+rm the loop above does. Covers both ways the CLI
+# can leave the job behind: hermes missing from PATH (partial/manual uninstall),
+# or `gateway uninstall` failing on a damaged install. Never exit this script
+# with a KeepAlive job still loaded against a binary we're about to remove.
+hermes_plist="${LAUNCH_DIR}/ai.hermes.gateway.plist"
+if [[ -f "$hermes_plist" ]]; then
+  launchctl unload "$hermes_plist" 2>/dev/null || true
+  rm -f "$hermes_plist"
+  echo "    removed ai.hermes.gateway (plist left behind by the CLI)"
+fi
+unset hermes_plist
 
 echo "==> Removing OpenChamber / OpenCode / Hermes binaries"
 brew uninstall openchamber 2>/dev/null || true
