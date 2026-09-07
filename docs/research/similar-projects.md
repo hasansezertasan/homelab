@@ -27,7 +27,7 @@ These manage fleets of AI coding agents — the orchestration layer your `homela
 | **amux** | https://github.com/mixpeek/amux | Open-source control plane for AI coding agents. SQLite-backed kanban, tmux session per agent, web + mobile dashboard, self-healing recovery. Single Rust binary. MIT. | **Very high** — parallel agent orchestration with dashboard |
 | **dev-3.0** | https://github.com/h0x91b/dev-3.0 | "Mission control for the One Person Studio" — fleet of AI coding agents in parallel, Kanban + git worktrees + tmux. Each task gets its own worktree/terminal/agent. | **High** — similar parallel-agent philosophy |
 | **Mission Control (builderz-labs)** | https://github.com/builderz-labs/mission-control | Self-hosted control plane: dispatch tasks, review runs, track spend, operate Claude Code/Codex/etc. SQLite-backed, RBAC, cron, webhooks, pipelines. Alpha. | **High** |
-| **Orca** | https://www.onorca.dev / https://github.com/onorca | Agent Development Environment (ADE). Parallel agents in isolated git worktrees, GitHub/Linear integration, browser previews, task dispatch. 20k+ stars. Already in your homelab stack. | **Direct component** |
+| **Orca** | https://www.onorca.dev / https://github.com/stablyai/orca | Agent Development Environment (ADE). Parallel agents in isolated git worktrees, GitHub/Linear integration, browser previews, task dispatch. 63k+ stars. Already in your homelab stack. | **Direct component** |
 
 ---
 
@@ -70,7 +70,7 @@ The actual agents you'd run on the box. Relevant to what `homelab` installs.
 
 | Project | URL | Description | Relevance |
 |---------|-----|-------------|-----------|
-| **OpenCode** | https://github.com/opencode-ai/opencode | Terminal AI coding agent (TUI + CLI). Headless server mode (`opencode serve --port 4096`), OpenAPI spec, JS/TS SDK. MCP servers, LSP, plugins. Already in your homelab stack. | **Direct component** |
+| **OpenCode** | https://github.com/anomalyco/opencode | Terminal AI coding agent (TUI + CLI). Headless server mode (`opencode serve --port 4096`), OpenAPI spec, JS/TS SDK. MCP servers, LSP, plugins. Already in your homelab stack. | **Direct component** |
 | **Hermes Agent** | https://github.com/NousResearch/hermes-agent / https://hermes-agent.ai | Open-source self-improving AI agent by Nous Research. Memory, skills, cron, web dashboard, GitHub workflows, messaging channels. Single-command macOS install. Already in your homelab stack. | **Direct component** |
 | **Hermes Studio** | https://github.com/JPeetz/Hermes-Studio | Web UI & dashboard for Hermes Agent — chat, memory, skills, terminal, approvals, multi-agent orchestration. Self-hosted PWA. | **High** — frontend for Hermes |
 | **Hermes WebUI** | https://github.com/nesquena/hermes-webui | Alternative web UI for Hermes Agent with session-recall and gateway routing. | **Medium** |
