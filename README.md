@@ -129,7 +129,8 @@ If you want HTTPS for the web UI, use `tailscale serve` — see [OpenCode + Open
 ├── debloat-mac.sh           # opt-in, reversible macOS resource tuning
 ├── teardown.sh              # reverse it (keeps data dirs)
 ├── status.sh                # health check: binaries, ports, launchd, tailscale
-├── mise.toml                # per-project runtime pins
+├── .config/mise.toml        # per-project runtime pins + `mise run lint-md`
+├── .github/renovate.json    # dependency updates
 └── launchd/
     ├── dev.openchamber.opencode.plist
     ├── dev.openchamber.openchamber.plist

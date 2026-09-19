@@ -1,0 +1,8 @@
+[tools]
+markdownlint-cli2 = "latest"
+shellcheck = "latest"
+shfmt = "latest"
+
+[tasks.lint-md]
+description = "Lint Markdown against .config/.markdownlint-cli2.yaml"
+run = "markdownlint-cli2 --config .config/.markdownlint-cli2.yaml README.md CLAUDE.md"

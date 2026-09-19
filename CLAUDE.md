@@ -27,9 +27,10 @@ HOMELAB_DEBLOAT=1 ./bootstrap.sh     # conservatively trim unused macOS backgrou
 ```
 
 No test suite, no build step. Validate shell edits with `bash -n bootstrap.sh`
-and `shellcheck` if available. Markdown is linted by `.markdownlint-cli2.yaml` —
-`npx markdownlint-cli2 README.md CLAUDE.md` (80-col prose; code blocks and
-tables exempt).
+and `shellcheck` if available. Markdown is linted by
+`.config/.markdownlint-cli2.yaml` — run `mise run lint-md` (80-col prose; code
+blocks and tables exempt). markdownlint-cli2 does not search `.config/`, so the
+task passes `--config` explicitly; a bare invocation silently uses defaults.
 
 ## Architecture
 
@@ -49,7 +50,7 @@ tables exempt).
   `hermes dashboard` / `hermes`, plus `--tui` for the modern TUI), and its one
   background job (`ai.hermes.gateway`) is written by `hermes gateway install`,
   which §5c shells out to.
-- `mise.toml` — per-project runtime pins for agents using `mise`.
+- `.config/mise.toml` — per-project runtime pins plus the `lint-md` task.
 - `debloat-mac.sh` — opt-in macOS resource tuning with captured-state rollback.
 - `status.sh` / `teardown.sh` — companions to bootstrap.
 
