@@ -94,3 +94,21 @@ task passes `--config` explicitly; a bare invocation silently uses defaults.
   `bootstrap.sh` match.
 - Conventional Commits, Conventional Branch, Conventional PR titles (per global
   CLAUDE.md).
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for `hasansezertasan/homelab` (via `gh`).
+See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root.
+See `docs/agents/domain.md`.
+
+### Plugin setup
+
+`.claude/settings.json` only enables the `mattpocock-skills` plugin; it does
+not install it. On a fresh clone, run once:
+`claude plugin install mattpocock-skills@claude-plugins-official --scope project`.
