@@ -31,3 +31,7 @@ end_of_line = crlf
 [*.sh]
 end_of_line = lf
 # <<< cobo:end sha256=e77e873fad9f0ff5e000743b383685dae54dc35063610f628ff909e1de72e8bd <<<
+
+# Project-specific overrides (later sections win over the cobo block above).
+[*.{sh,plist}]
+indent_size = 2
